@@ -1,11 +1,11 @@
 package pf
 
 import (
-	"pf"
+	"kqdb/pf"
 	"testing"
 )
 
-func Test_CreateDataFile(t *testing.T) {
+func test_CreateDataFile(t *testing.T) {
 	err := pf.CreateDataFile("test")
 	t.Log(err)
 }

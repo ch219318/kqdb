@@ -1,6 +1,7 @@
 package pf
 
 import (
+	"encoding/binary"
 	"log"
 	"os"
 )
@@ -15,7 +16,7 @@ const (
 	DATA_FILE_HEADER_METAINFO_SIZE       = 1 * SIZE_K //数据文件头里元信息大小
 	DATA_FILE_PAGE_SIZE                  = 4 * SIZE_K //数据文件分页大小
 	DATA_FILE_EXT_NAME                   = "myd"      //数据文件扩展名
-	DATA_FILE_BASE_PATH                  = "../../data/"
+	DATA_FILE_BASE_PATH                  = "../data/"
 	FRAME_FILE_EXT_NAME                  = "frm" //结构文件扩展名
 
 )
@@ -23,6 +24,7 @@ const (
 type FileHandle struct {
 	Path     string //相对于data文件夹
 	FileName string
+	File     os.File
 }
 
 type PageHandle struct {
@@ -48,9 +50,20 @@ func CreateDataFile(name string) (erro error) {
 	return erro
 }
 
-func OpenDataFile(path string, name string) (fileHandle FileHandle) {
-	fileHandle = FileHandle{Path: path, FileName: name}
-	return
+func OpenDataFile(path string, name string) (fileHandle FileHandle, err error) {
+	address := DATA_FILE_BASE_PATH + Path + "/" + name
+	datafile, err1 := os.OpenFile(address, os.O_RDWR|os.O_APPEND, 0666)
+	if err1 == nil {
+		fileHandle = FileHandle{Path: path, FileName: name, File: datafile}
+	} else {
+		return fileHandle, err1
+	}
+	return fileHandle, err
+}
+
+func CloseDataFile(fh *FileHandle) error {
+	err1 := fh.File.Close()
+	return err1
 }
 
 func (fh *FileHandle) AddData(bytes []byte) (err error) {
@@ -87,19 +100,22 @@ type MetaInfo struct {
 }
 
 //获取文件头中node表元信息
-func (fh *FileHandle) GetMetaInfo() (mi MetaInfo, err error) {
-	address := DATA_FILE_BASE_PATH + fh.Path + "/" + fh.FileName
-	file, err1 := os.OpenFile(address, os.O_RDONLY, 0666)
-	if err1 == nil {
-		content := make([]byte, DATA_FILE_HEADER_METAINFO_SIZE)
-		n, err2 := file.Read(content)
-		log.Printf("获取数据成功%d:%v\n", n, err2)
-		mi.CurPageId = int(content[0:4])
-		mi.CurSeqId = int(content[4:8])
-		mi.CurNodePageId = int(content[8:12])
-		log.Printf("mi:%v\n", mi)
-	} else {
-		return mi, err1
-	}
-	return mi, err
+func (fh *FileHandle) GetMetaInfo() (mi MetaInfo) {
+	file := fh.File
+	content := make([]byte, DATA_FILE_HEADER_METAINFO_SIZE)
+	n, err2 := file.Read(content)
+	log.Printf("获取数据成功%d:%v\n", n, err2)
+	mi.CurPageId = int(binary.BigEndian.Uint32(content[0:4]))
+	mi.CurSeqId = int(binary.BigEndian.Uint32(content[4:8]))
+	mi.CurNodePageId = int(binary.BigEndian.Uint32(content[8:12]))
+	log.Printf("mi:%v\n", mi)
+	return mi
+}
+
+//保存文件头中node表元信息
+func (fh *FileHandle) SaveMetaInfo() (mi MetaInfo) {
+}
+
+//初始化文件头中node表元信息
+func (fh *FileHandle) InitMetaInfo() (mi MetaInfo) {
 }
