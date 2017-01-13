@@ -10,15 +10,25 @@ func test_CreateDataFile(t *testing.T) {
 	t.Log(err)
 }
 
-func test_AddData(t *testing.T) {
-	fileHandle := pf.FileHandle{Path: "sch", FileName: "test.myd"}
-	numbers := []byte{1, 0, 1, 2, 3, 4, 5, 6, 7, 8}
-	err := fileHandle.AddData(numbers)
+func Test_AddData(t *testing.T) {
+	fileHandle, _ := pf.OpenDataFile("sch", "test.myd")
+	defer pf.CloseDataFile(fileHandle)
+	bytes := []byte("hello wiki!2")
+	err := fileHandle.AddData(bytes)
 	t.Log(err)
 }
 
-func Test_GetMetaInfo(t *testing.T) {
+func test_GetMetaInfo(t *testing.T) {
 	fileHandle := pf.FileHandle{Path: "sch", FileName: "test.myd"}
-	_, err := fileHandle.GetMetaInfo()
+	mi := fileHandle.GetMetaInfo()
+	t.Log(mi)
+}
+
+func test_SaveMetaInfo(t *testing.T) {
+	fileHandle, _ := pf.OpenDataFile("sch", "test.myd")
+	defer pf.CloseDataFile(fileHandle)
+	t.Logf("%p", fileHandle)
+	mi := pf.MetaInfo{233, 33, 34}
+	err := fileHandle.SaveMetaInfo(mi)
 	t.Log(err)
 }
