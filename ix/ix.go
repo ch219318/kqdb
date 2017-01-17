@@ -1,9 +1,11 @@
 //使用b+树结构，order 6，
-//如果值为字符串，先使用hash得出对应的数字类型key
+//如果值为字符串，先使用hash
 package ix
 
 import (
+	"encoding/binary"
 	"errors"
+	"log"
 	"os"
 )
 
@@ -21,11 +23,11 @@ const (
 
 //b＋树非叶子节点
 type NonLeafNode struct {
-	key1   int //0为空
-	key2   int
-	key3   int
-	key4   int
-	key5   int
+	key1   string
+	key2   string
+	key3   string
+	key4   string
+	key5   string
 	point1 int //相对于文件头偏移量，单位字节
 	point2 int
 	point3 int
@@ -37,11 +39,11 @@ type NonLeafNode struct {
 //b＋树叶子节点
 type LeafNode struct {
 	nodetype int //-1表示为叶子节点
-	key1     int
-	key2     int
-	key3     int
-	key4     int
-	key5     int
+	key1     string
+	key2     string
+	key3     string
+	key4     string
+	key5     string
 	value1   int //负数为溢出页地址，正数为seqid,0为空或者被删除
 	value2   int
 	value3   int
@@ -62,6 +64,7 @@ func CreateIndexFile(tablename string, schemaname string) (err error) {
 	} else {
 		return err1
 	}
+	log.Printf("创建索引文件成功%s\n", fullname)
 	return
 }
 
@@ -78,12 +81,20 @@ func CreateIndex(colname string, tablename string, schemaname string) (err error
 	}
 	indexfile, err2 := os.OpenFile(fullname, os.O_RDWR|os.O_APPEND, os.ModePerm)
 	if err2 == nil {
-
 		//写入根节点
+		indexfileInfo, _ := indexfile.Stat()
+		indexfileSize := indexfileInfo.Size()
+		log.Printf("%s文件大小%v\n", fullname, indexfileSize)
+		rootNode := new(NonLeafNode) //根节点是非叶子节点
+		rootNode.key1 = "abc"
+		rootNode.key2 = "ddd"
+		rootNode.key3 = "fff"
+		bytes := encodeNonLeafNode(rootNode)
+		indexfile.Write(bytes[:])
 
 		firstbyte := make([]byte, 1)
 		for i := 0; i < 1024; i++ { //最多有1024个索引
-			n, err3 := indexfile.ReadAt(firstbyte, i*1024)
+			n, err3 := indexfile.ReadAt(firstbyte, int64(i*1024))
 			if (n == 1) && (err3 == nil) && (firstbyte[0] == 0) {
 				//写入根节点元信息
 				rootnodemeta := make([]byte, ROOTNODE_INFO_SIZE)
@@ -91,13 +102,19 @@ func CreateIndex(colname string, tablename string, schemaname string) (err error
 				for m := range colnameBytes {
 					rootnodemeta[m+1] = colnameBytes[m]
 				}
-
-				indexfile.WriteAt(rootnodemeta, i*1024)
-				return err
+				indexoff := make([]byte, 4)
+				binary.BigEndian.PutUint32(indexoff, uint32(indexfileSize))
+				rootnodemeta[16] = indexoff[0]
+				rootnodemeta[17] = indexoff[1]
+				rootnodemeta[18] = indexoff[2]
+				rootnodemeta[19] = indexoff[3]
+				indexfile.WriteAt(rootnodemeta, int64(i*1024))
+				return
 			}
 		}
 		return errors.New("文件索引头使用完毕") //如果1024个索引都被占用，返回错误
 	}
+	return
 }
 
 //单个查询使用索引
@@ -120,3 +137,23 @@ func DelKey(key int) (err error) {
 func InsertKey(Key int) (err error) {
 	return err
 }
+
+//编码非叶子节点
+func encodeNonLeafNode(node *NonLeafNode) (bytes []byte) {
+	nodeSlice := node.key1 + "/" + node.key2 + "/" + node.key3 + "/" + node.key4 + "/" +
+		node.key5 + "/" + string(node.point1) + "/" + string(node.point2) + "/" +
+		string(node.point3) + "/" + string(node.point4) + "/" + string(node.point5) + "/" +
+		string(node.point6) + "|"
+	bytes = []byte(nodeSlice)
+	return bytes
+}
+
+//解码非叶子节点
+
+//编码叶子节点
+func encodeLeafNode(node *LeafNode) (bytes [44]byte) {
+
+	return bytes
+}
+
+//解码叶子节点
