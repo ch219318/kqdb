@@ -86,9 +86,9 @@ func CreateIndex(colname string, tablename string, schemaname string) (err error
 		indexfileSize := indexfileInfo.Size()
 		log.Printf("%s文件大小%v\n", fullname, indexfileSize)
 		rootNode := new(NonLeafNode) //根节点是非叶子节点
-		rootNode.key1 = "abc"
-		rootNode.key2 = "ddd"
-		rootNode.key3 = "fff"
+		// rootNode.key1 = "abc"
+		// rootNode.key2 = "ddd"
+		// rootNode.key3 = "fff"
 		bytes := encodeNonLeafNode(rootNode)
 		indexfile.Write(bytes[:])
 
