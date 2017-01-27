@@ -1,19 +1,22 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net"
-	"strconv"
+	// "strconv"
 )
 
+var port = flag.String("p", "33455", "help message for flagname")
+
 func main() {
-	port := 33455
-	var address string = ":" + strconv.FormatInt(int64(port), 10)
+	flag.Parse()
+	var address string = ":" + *port
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		// handle error
 	}
-	log.Printf("kqdb服务端启动成功，监听端口为：%d\n", port)
+	log.Printf("kqdb服务端启动成功，监听端口为：%s\n", *port)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -46,3 +49,7 @@ func handleConnection(conn net.Conn) {
 func handSql(s string) (result string) {
 	return "result"
 }
+
+// func createTable(tableName string, cols []column) {
+
+// }

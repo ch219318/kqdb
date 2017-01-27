@@ -2,14 +2,25 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 )
 
+var host = flag.String("h", "127.0.0.1", "help message for flagname")
+var port = flag.String("p", "33455", "help message for flagname")
+
 func main() {
-	conn, err := net.Dial("tcp", ":33455")
+	flag.Parse()
+	log.Printf("host=%s,port=%s\n", *host, *port)
+	address := *host + ":" + *port
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
 	defer conn.Close()
 	log.Printf("连接为：%v\n", conn)
 	if err != nil {
@@ -35,6 +46,6 @@ func sendMsg(bytes []byte, conn net.Conn) error {
 	log.Printf("写入字节数:%v\n", stauts)
 	slice := make([]byte, 1024)
 	n, _ := conn.Read(slice)
-	log.Printf("接收字符串为：%s\n", string(slice[:n]))
+	fmt.Printf("<<%s\n", string(slice[:n]))
 	return err
 }
