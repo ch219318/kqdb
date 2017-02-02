@@ -2,6 +2,7 @@ package sm
 
 import (
 	"log"
+	"strings"
 	"time"
 )
 
@@ -42,3 +43,24 @@ func GenTableByDdl(sql string) (table, error) {
 //保存结构体到frm文件
 
 //根据frm文件生成表结构体
+
+//把sql语句转换为一个一个单词
+func SqlToWords(sql string) (words []string, err error) {
+	// runes := ([]rune)sql
+	chars := strings.Split(sql, "")
+	specialChars := "(),;"
+	word := ""
+	for _, char := range chars {
+		if char == " " {
+			words = append(words, word)
+			word = ""
+		} else if strings.Contains(specialChars, char) {
+			words = append(words, word, char)
+			// words = append(words, char)
+			word = ""
+		} else {
+			word = word + char
+		}
+	}
+	return
+}
