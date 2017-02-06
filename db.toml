@@ -1,0 +1,11 @@
+[servers.alpha]
+ip = "10.0.0.1" # IP
+dc = "eqdc10"
+
+[smtpAuth]
+Identity = ""
+Username = "Do_Not_Reply"
+Password = "password"
+Host     = "example.com"
+Subject  = "message"
+To       = ["me@example.com","you@example.com"]

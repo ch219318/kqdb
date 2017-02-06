@@ -6,6 +6,7 @@ import (
 	// "time"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -86,6 +87,16 @@ func SaveTableToFile(table *table) error {
 		return err
 	}
 	log.Println("json:" + string(bytes))
+	file, err := os.Create("/Users/chenkaiqing/Documents/golang/workspace/src/kqdb/data/sch/" +
+		table.Name + ".frm")
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+	_, err1 := file.Write(bytes)
+	if err1 != nil {
+		return err1
+	}
 	return nil
 }
 

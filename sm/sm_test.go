@@ -7,12 +7,7 @@ import (
 )
 
 func test_test(t *testing.T) {
-	numbers := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
-	num1 := numbers[0:5]
-	num1[2] = 33333
-	t.Log(num1)
-	t.Log(numbers)
-	t.Log(strings.ToLower("(),"))
+
 }
 
 func test_SqlToWords(t *testing.T) {

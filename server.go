@@ -5,12 +5,20 @@ import (
 	"log"
 	"net"
 	// "strconv"
+	"fmt"
+	"github.com/achun/tom-toml"
+	"kqdb/sm"
 )
 
 var port = flag.String("p", "33455", "help message for flagname")
 
+type Config struct {
+	Port     string
+	BasePath string
+}
+
 func main() {
-	flag.Parse()
+	init()
 	var address string = ":" + *port
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
@@ -25,6 +33,13 @@ func main() {
 		}
 		go handleConnection(conn)
 	}
+}
+
+func init() {
+	toml, err := toml.LoadFile("db.toml")
+	config := new(Config)
+	t.Fetch(prefix)
+	flag.Parse()
 }
 
 //处理连接
@@ -46,10 +61,28 @@ func handleConnection(conn net.Conn) {
 }
 
 //执行sql
-func handSql(s string) (result string) {
-	return "result"
+func handSql(input string) (result string) {
+	defer func() {
+		if err := recover(); err != nil {
+			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
+		}
+	}()
+	result = handDdlSql(input)
+	return result
 }
 
-// func createTable(tableName string, cols []column) {
+func handDdlSql(input string) string {
+	table, err := sm.GenTableByDdl(input)
+	if err != nil {
+		return err.Error()
+	}
+	err1 := sm.SaveTableToFile(table)
+	if err1 != nil {
+		return err1.Error()
+	}
+	return "op ok"
+}
 
-// }
+func handDmlSql(input string) string {
+	return "result"
+}
