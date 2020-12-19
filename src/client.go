@@ -10,12 +10,12 @@ import (
 )
 
 var host = flag.String("h", "127.0.0.1", "help message for flagname")
-var port = flag.String("p", "33455", "help message for flagname")
+var serverPort = flag.String("p", "33455", "help message for flagname")
 
 func main() {
 	flag.Parse()
-	log.Printf("host=%s,port=%s\n", *host, *port)
-	address := *host + ":" + *port
+	log.Printf("host=%s,serverPort=%s\n", *host, *serverPort)
+	address := *host + ":" + *serverPort
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		log.Println(err.Error())

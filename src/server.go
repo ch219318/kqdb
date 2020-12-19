@@ -6,8 +6,7 @@ import (
 	"net"
 	// "strconv"
 	"fmt"
-	"github.com/achun/tom-toml"
-	"kqdb/sm"
+	"sm"
 )
 
 var port = flag.String("p", "33455", "help message for flagname")
@@ -18,7 +17,7 @@ type Config struct {
 }
 
 func main() {
-	init()
+	init1()
 	var address string = ":" + *port
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
@@ -35,10 +34,10 @@ func main() {
 	}
 }
 
-func init() {
-	toml, err := toml.LoadFile("db.toml")
-	config := new(Config)
-	t.Fetch(prefix)
+func init1() {
+	//toml, err := toml.LoadFile("db.toml")
+	//config := new(Config)
+	//t.Fetch(prefix)
 	flag.Parse()
 }
 
