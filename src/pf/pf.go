@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+//文件管理模块
 const (
 	SIZE_B                         int64 = 1
 	SIZE_K                               = 1024 * SIZE_B

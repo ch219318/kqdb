@@ -10,6 +10,8 @@ import (
 	"strconv"
 )
 
+//系统管理模块
+
 //定义列结构体
 type table struct {
 	Name    string   //表名

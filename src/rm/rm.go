@@ -1,5 +1,7 @@
 package rm
 
+//纪录管理模块
+
 func InsertRecord(bytes []byte) (nodeId int, err error) {
 
 	return nodeId, err

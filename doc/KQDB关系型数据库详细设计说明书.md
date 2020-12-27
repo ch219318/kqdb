@@ -1,0 +1,88 @@
+KQDB关系型数据库详细设计说明书
+
+# WAL + Buffer Pool + 定时flush
+
+Change发生时：
+1、先将变更后内容记入WAL Buffer
+2、再将更新后的数据写入Data Buffer
+
+Commit发生时：
+1、WAL Buffer刷新到Disk
+2、Data Buffer写磁盘推迟
+
+Checkpoint发生时：
+1、将所有Data Buffer刷新到磁盘
+
+# 1.数据文件管理模块pf
+
+表和库放在data目录下。与mysql相似，data下一个文件夹表示一个库，一个库下里有多个表。
+一个表相关的文件包括：数据文件，扩展名为myd；存储表结构的结构文件，扩展名frm；存储表索引的索引文件，扩展名为myi。
+
+数据文件由extent、page组成
+extent=8个连续page
+page大小:8k
+page分类：文件头、pfs、gam、iam、data
+
+pfs-page = pfs-header(64B) + pfs-body
+data-page = data-header(24B) + 多个item(4B) + 空闲空间 + 多个tuple（大小不固定）+ special
+
+data-header(24B) = pd_lsn(8B) + pd_checksum(2B) + pd_flags(2B) + pd_lower(2B) + pd_upper(2B)
+                   + pd_special(2B) + pd_pagesize_version(2B) + pd_prune_xid(4B) 
+                   
+item(4B) = offset(15b) + flag(2b) + length(15b)
+
+tuple = tupe-header + tuple-body
+tuple-header = t_xmin + t_xmax + t_cid + t_ctid
+
+
+
+buffer pool设计
+buffer frame：与page大小相等
+list：
+
+# 2.索引管理模块ix
+
+使用b+树结构，6阶，
+如果值为字符串，先使用hash
+
+myi文件结构如下图，图1.2
+
+# 3.通信模块
+
+使用33455端口，暂时未使用配置文件，分为客户端和服务端，使用tcp协议通信
+日志级别配置（未做）
+参数配置（未做）
+服务端：
+先使用一个for循环获取连接，再使用一个for循环读取输入sql，并处理和反馈
+读取到eof错误代表连接已经关闭
+服务端命令行参数－p设置端口，默认33455
+客户端：
+使用一个for循环发送sql，并获取反馈。
+客户端命令行，参数－h设置IP地址，默认本机；－p设置端口，默认33455；
+返回内容超过固定缓存情况处理（未做）
+
+# 4.系统管理模块sm
+
+ddl管理功能
+表结构文件frm，表由列组成
+每一列结构：列序列号／列名称／数据类型／数据宽度／非空与否／默认值／注释
+建表语句：CREATE TABLE region(
+ID number(2) NOT NULL PRIMARY KEY,
+postcode number(6) default '0' NOT NULL unique ,
+areaname varchar2(30) default ' ' NOT NULL);
+
+# 5.查询语言模块ql
+
+sql结构体：sql种类，表，条件，排序
+
+使用sql解析器，生成sql语法树，处理语法树
+
+# 6.事务模块
+
+事务：
+readView：
+mvcc：多版本
+
+# 7.锁模块
+
+锁结构：

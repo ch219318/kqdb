@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+//索引模块，b+树非聚簇索引，索引文件放在data文件夹，后缀myi
 const (
 	SIZE_B                    int64 = 1
 	SIZE_K                          = 1024 * SIZE_B
