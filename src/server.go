@@ -2,11 +2,15 @@ package main
 
 import (
 	"flag"
+	"kqdb/src/sm"
 	"log"
 	"net"
 	// "strconv"
 	"fmt"
-	"sm"
+)
+
+import (
+	"github.com/xwb1989/sqlparser"
 )
 
 var port = flag.String("p", "33455", "help message for flagname")
@@ -60,13 +64,26 @@ func handleConnection(conn net.Conn) {
 }
 
 //执行sql
-func handSql(input string) (result string) {
+func handSql(sql string) (result string) {
+
+	stmt, err := sqlparser.Parse(sql)
+	if err != nil {
+		// Do something with the err
+	}
+
+	// Otherwise do something with stmt
+	switch stmt := stmt.(type) {
+	case *sqlparser.Select:
+		_ = stmt
+	case *sqlparser.Insert:
+	}
+
 	defer func() {
 		if err := recover(); err != nil {
 			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
 		}
 	}()
-	result = handDdlSql(input)
+	result = handDdlSql(sql)
 	return result
 }
 
