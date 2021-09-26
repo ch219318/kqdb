@@ -1,11 +1,16 @@
 package recordm
 
+import (
+	"container/list"
+)
+
 //纪录管理模块
 
 type Row struct {
 }
 
 type Page struct {
+	row_list *list.List
 }
 
 func InsertRecord(bytes []byte) (nodeId int, err error) {

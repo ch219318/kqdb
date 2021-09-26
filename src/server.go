@@ -102,6 +102,23 @@ func handDdl(stmt *sqlparser.DDL) string {
 
 func handSelect(stmt *sqlparser.Select) string {
 	//var rows []recordm.Row
+	tables := stmt.From
+	for _, table := range tables {
+		switch t := table.(type) {
+		case *sqlparser.AliasedTableExpr:
+			_ = t
+		case *sqlparser.ParenTableExpr:
+			_ = t
+		case *sqlparser.JoinTableExpr:
+			_ = t
+		}
+	}
+	len := len(recordm.Buffer_pool)
+	log.Print(len)
+
+	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
+		return true, nil
+	}, stmt)
 	return "result"
 }
 
