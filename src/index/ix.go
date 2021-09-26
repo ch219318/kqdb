@@ -1,6 +1,6 @@
 //使用b+树结构，order 6，
 //如果值为字符串，先使用hash
-package ix
+package index
 
 import (
 	"encoding/binary"

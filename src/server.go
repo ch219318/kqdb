@@ -2,14 +2,12 @@ package main
 
 import (
 	"flag"
-	"kqdb/src/sm"
+	"kqdb/src/recordm"
+	//"kqdb/src/systemm"
 	"log"
 	"net"
 	// "strconv"
 	"fmt"
-)
-
-import (
 	"github.com/xwb1989/sqlparser"
 )
 
@@ -49,13 +47,13 @@ func init1() {
 func handleConnection(conn net.Conn) {
 	log.Printf("开始处理连接：%v\n", conn)
 	for {
-		slice := make([]byte, 1024)
-		n, err := conn.Read(slice)
+		bytes := make([]byte, 1024)
+		n, err := conn.Read(bytes)
 		if err != nil {
 			log.Printf("异常信息为：%s\n", err.Error())
 			break
 		}
-		s := string(slice[:n])
+		s := string(bytes[:n])
 		log.Printf("接收字节数：%v,字符串：%s\n", n, s)
 		result := handSql(s)
 		conn.Write([]byte(result))
@@ -74,8 +72,11 @@ func handSql(sql string) (result string) {
 	// Otherwise do something with stmt
 	switch stmt := stmt.(type) {
 	case *sqlparser.Select:
-		_ = stmt
+		handSelect(stmt)
 	case *sqlparser.Insert:
+		handInsert(stmt)
+	case *sqlparser.DDL:
+		handDdl(stmt)
 	}
 
 	defer func() {
@@ -83,22 +84,27 @@ func handSql(sql string) (result string) {
 			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
 		}
 	}()
-	result = handDdlSql(sql)
+
 	return result
 }
 
-func handDdlSql(input string) string {
-	table, err := sm.GenTableByDdl(input)
-	if err != nil {
-		return err.Error()
-	}
-	err1 := sm.SaveTableToFile(table)
-	if err1 != nil {
-		return err1.Error()
-	}
+func handDdl(stmt *sqlparser.DDL) string {
+	//table, err := sm.GenTableByDdl(input)
+	//if err != nil {
+	//	return err.Error()
+	//}
+	//err1 := sm.SaveTableToFile(table)
+	//if err1 != nil {
+	//	return err1.Error()
+	//}
 	return "op ok"
 }
 
-func handDmlSql(input string) string {
+func handSelect(stmt *sqlparser.Select) string {
+	//var rows []recordm.Row
+	return "result"
+}
+
+func handInsert(stmt *sqlparser.Insert) string {
 	return "result"
 }

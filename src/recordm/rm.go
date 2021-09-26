@@ -1,6 +1,12 @@
-package rm
+package recordm
 
 //纪录管理模块
+
+type Row struct {
+}
+
+type Page struct {
+}
 
 func InsertRecord(bytes []byte) (nodeId int, err error) {
 

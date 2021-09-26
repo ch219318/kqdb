@@ -1,4 +1,4 @@
-package ix
+package index
 
 import (
 	"testing"

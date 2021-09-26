@@ -16,6 +16,7 @@ func main() {
 	flag.Parse()
 	log.Printf("host=%s,serverPort=%s\n", *host, *serverPort)
 	address := *host + ":" + *serverPort
+
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		log.Println(err.Error())
@@ -23,10 +24,12 @@ func main() {
 	}
 	defer conn.Close()
 	log.Printf("连接为：%v\n", conn)
+
 	if err != nil {
 		log.Printf("异常信息为：%s\n", err.Error())
 		return
 	}
+
 	for {
 		fmt.Printf(">>")
 		// var s string

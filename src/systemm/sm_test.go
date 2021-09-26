@@ -1,4 +1,4 @@
-package sm
+package systemm
 
 import (
 	"testing"
