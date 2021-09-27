@@ -1,14 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
-	"kqdb/src/recordm"
-	//"kqdb/src/systemm"
+	"io"
+	"kqdb/src/sqlm"
 	"log"
 	"net"
-	// "strconv"
-	"fmt"
-	"github.com/xwb1989/sqlparser"
 )
 
 var port = flag.String("p", "33455", "help message for flagname")
@@ -19,24 +17,27 @@ type Config struct {
 }
 
 func main() {
-	init1()
-	var address string = ":" + *port
+	initCfg()
+
+	var address = ":" + *port
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		// handle error
+		log.Fatal(err)
 	}
-	log.Printf("kqdb服务端启动成功，监听端口为：%s\n", *port)
+	log.Printf("服务端启动成功，监听端口为：%s\n", *port)
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			// handle error
+			log.Println(err)
 			continue
 		}
-		go handleConnection(conn)
+		log.Printf("Accepted connection to %v from %v", conn.LocalAddr(), conn.RemoteAddr())
+		go handleConn(conn)
 	}
 }
 
-func init1() {
+func initCfg() {
 	//toml, err := toml.LoadFile("db.toml")
 	//config := new(Config)
 	//t.Fetch(prefix)
@@ -44,84 +45,38 @@ func init1() {
 }
 
 //处理连接
-func handleConnection(conn net.Conn) {
+func handleConn(conn net.Conn) {
 	log.Printf("开始处理连接：%v\n", conn)
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
+
 	for {
-		bytes := make([]byte, 1024)
-		n, err := conn.Read(bytes)
-		if err != nil {
-			log.Printf("异常信息为：%s\n", err.Error())
+		//接受请求
+		request, rErr := reader.ReadString('\n')
+		if rErr == io.EOF {
+			log.Printf("异常信息为：EOF\n")
 			break
 		}
-		s := string(bytes[:n])
-		log.Printf("接收字节数：%v,字符串：%s\n", n, s)
-		result := handSql(s)
-		conn.Write([]byte(result))
-	}
-	log.Printf("连接：%v关闭\n", conn)
-}
-
-//执行sql
-func handSql(sql string) (result string) {
-
-	stmt, err := sqlparser.Parse(sql)
-	if err != nil {
-		// Do something with the err
-	}
-
-	// Otherwise do something with stmt
-	switch stmt := stmt.(type) {
-	case *sqlparser.Select:
-		handSelect(stmt)
-	case *sqlparser.Insert:
-		handInsert(stmt)
-	case *sqlparser.DDL:
-		handDdl(stmt)
-	}
-
-	defer func() {
-		if err := recover(); err != nil {
-			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
+		if rErr != nil {
+			log.Printf("异常信息为：%s\n", rErr.Error())
+			break
 		}
-	}()
+		log.Printf("接收的字符串：%s\n", request)
 
-	return result
-}
+		//处理请求
+		sqlStr := request[:len(request)-1]
+		result := sqlm.HandSql(sqlStr)
 
-func handDdl(stmt *sqlparser.DDL) string {
-	//table, err := sm.GenTableByDdl(input)
-	//if err != nil {
-	//	return err.Error()
-	//}
-	//err1 := sm.SaveTableToFile(table)
-	//if err1 != nil {
-	//	return err1.Error()
-	//}
-	return "op ok"
-}
-
-func handSelect(stmt *sqlparser.Select) string {
-	//var rows []recordm.Row
-	tables := stmt.From
-	for _, table := range tables {
-		switch t := table.(type) {
-		case *sqlparser.AliasedTableExpr:
-			_ = t
-		case *sqlparser.ParenTableExpr:
-			_ = t
-		case *sqlparser.JoinTableExpr:
-			_ = t
+		//返回响应
+		_, wErr := writer.WriteString(result + "\n")
+		if wErr != nil {
+			log.Println(wErr.Error())
+			break
 		}
+		writer.Flush()
 	}
-	len := len(recordm.Buffer_pool)
-	log.Print(len)
 
-	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-		return true, nil
-	}, stmt)
-	return "result"
-}
-
-func handInsert(stmt *sqlparser.Insert) string {
-	return "result"
+	log.Printf("连接结束：%v\n", conn)
 }

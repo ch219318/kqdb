@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -19,36 +18,48 @@ func main() {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		log.Println(err.Error())
-		return
+		log.Fatal(err.Error())
 	}
 	defer conn.Close()
 	log.Printf("连接为：%v\n", conn)
 
-	if err != nil {
-		log.Printf("异常信息为：%s\n", err.Error())
-		return
-	}
-
 	for {
-		fmt.Printf(">>")
+		log.Printf(">>")
 		// var s string
 		// fmt.Scanln(&s)如果输入有空格会被分成多段
-		slice, _, _ := bufio.NewReader(os.Stdin).ReadLine()
-		if string(slice) == "quit" {
+		str, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		if str == "quit\n" {
 			break
 		}
-		log.Printf("您所输入的字符为%s\n", string(slice))
-		sendMsg(slice, conn)
+		sendRequest(str, conn)
+		handResponse(conn)
 	}
+	log.Printf("Bye!")
 }
 
-func sendMsg(bytes []byte, conn net.Conn) error {
-	// status, err := bufio.NewReader(conn).ReadString('\n')
-	stauts, err := conn.Write(bytes)
-	log.Printf("写入字节数:%v\n", stauts)
-	slice := make([]byte, 1024)
-	n, _ := conn.Read(slice)
-	fmt.Printf("<<%s\n", string(slice[:n]))
-	return err
+//发送请求
+func sendRequest(msg string, conn net.Conn) {
+	writer := bufio.NewWriter(conn)
+
+	_, wErr := writer.WriteString(msg)
+	if wErr != nil {
+		log.Fatal(wErr.Error())
+	}
+	writer.Flush()
+	//log.Printf("写入字节数:%v\n", num)
+
+	return
+}
+
+//处理响应
+func handResponse(conn net.Conn) {
+	reader := bufio.NewReader(conn)
+
+	response, rErr := reader.ReadString('\n')
+	if rErr != nil {
+		log.Fatal(rErr.Error())
+	}
+
+	log.Printf("<<%s\n", response)
+	return
 }
