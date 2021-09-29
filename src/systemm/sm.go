@@ -1,6 +1,7 @@
 package systemm
 
 import (
+	"github.com/xwb1989/sqlparser"
 	"log"
 	"strings"
 	// "time"
@@ -13,13 +14,13 @@ import (
 //系统管理模块
 
 //定义列结构体
-type table struct {
+type Table struct {
 	Name    string   //表名
-	Columns []column //列切片
+	Columns []Column //列切片
 }
 
 //定义表结构体
-type column struct {
+type Column struct {
 	Name       string   //列名
 	DataType   DataType //列数据类型
 	DataWidth  int      // 数据宽度
@@ -48,10 +49,10 @@ func (ge grammerError) Error() string {
 }
 
 //根据ddl语句生成表结构体
-func GenTableByDdl(sql string) (*table, error) {
+func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 	//todo sql语言校验
 	words := SqlToWords(sql)
-	genTable := new(table)
+	genTable := new(Table)
 	genTable.Name = words[2]
 	indexs1 := index(words, "(")
 	indexs2 := index(words, ",")
@@ -65,7 +66,7 @@ func GenTableByDdl(sql string) (*table, error) {
 	slice = append(slice, indexs3[len(indexs3)-1])
 	log.Println(slice)
 	colNumber := len(slice) - 1 //列数量
-	columns := make([]column, colNumber)
+	columns := make([]Column, colNumber)
 	for i := 0; i < colNumber; i++ {
 		startIndex := slice[i]
 		endIndex := slice[i+1]
@@ -83,7 +84,7 @@ func GenTableByDdl(sql string) (*table, error) {
 }
 
 //保存表结构体到frm文件
-func SaveTableToFile(table *table) error {
+func SaveTableToFile(table *Table) error {
 	bytes, err := json.Marshal(table)
 	if err != nil {
 		return err
@@ -150,8 +151,8 @@ func index0(words []string, word string, isIgnoreCase bool) (indexs []int) {
 }
 
 //根据ddl词切片生成column
-func genColumn(words []string) (column, error) {
-	col := new(column)
+func genColumn(words []string) (Column, error) {
+	col := new(Column)
 	col.Name = words[0]
 	switch strings.ToLower(words[1]) {
 	case "number":

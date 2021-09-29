@@ -2,11 +2,20 @@ package recordm
 
 import (
 	"container/list"
+	"kqdb/src/systemm"
 )
 
 //纪录管理模块
 
+type rawRow struct {
+	len        int     //行的长度
+	nullBitMap [2]byte //空值位图
+	data       []byte  //实际数据，非定长类型数据=2字节长度+实际内容
+}
+
 type Row struct {
+	Table   systemm.Table     //表
+	Content map[string]string //列名：列值，列值为string
 }
 
 type Page struct {

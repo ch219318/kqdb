@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/xwb1989/sqlparser"
 	"kqdb/src/recordm"
+	"kqdb/src/systemm"
 	"log"
 )
 
@@ -27,6 +28,42 @@ func HandSql(sql string) (result string) {
 		return "sql格式错误:" + sql
 	}
 
+	switch stmt := stmt.(type) {
+	case *sqlparser.DDL:
+		result = handDdl(stmt)
+	case *sqlparser.Select:
+		result = handSelect(stmt)
+	case *sqlparser.Insert:
+		result = handInsert(stmt)
+	default:
+		result = "暂不支持当前类型sql:" + sql
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
+		}
+	}()
+
+	log.Printf("result的值为%v\n", result)
+	return
+}
+
+func handDdl(stmt *sqlparser.DDL) string {
+	table, err := systemm.GenTableByDdl(stmt)
+	if err != nil {
+		return err.Error()
+	}
+	err1 := systemm.SaveTableToFile(table)
+	if err1 != nil {
+		return err1.Error()
+	}
+	return "ok"
+}
+
+func handSelect(stmt *sqlparser.Select) string {
+	//var rows []recordm.Row
+
 	//语义检查
 	check(stmt)
 
@@ -43,14 +80,7 @@ func HandSql(sql string) (result string) {
 		rows = append(rows, i)
 	}
 
-	defer func() {
-		if err := recover(); err != nil {
-			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
-		}
-	}()
-
-	log.Printf("result的值为%v\n", result)
-	return result
+	return ""
 }
 
 func check(statement sqlparser.Statement) {
@@ -69,23 +99,6 @@ func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
 		return true, nil
 	}, stmt)
 	return plan
-}
-
-func handDdl(stmt *sqlparser.DDL) string {
-	//table, err := sm.GenTableByDdl(input)
-	//if err != nil {
-	//	return err.Error()
-	//}
-	//err1 := sm.SaveTableToFile(table)
-	//if err1 != nil {
-	//	return err1.Error()
-	//}
-	return "ok"
-}
-
-func handSelect(stmt *sqlparser.Select) string {
-	//var rows []recordm.Row
-	return ""
 }
 
 func handInsert(stmt *sqlparser.Insert) string {
