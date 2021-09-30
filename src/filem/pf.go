@@ -2,6 +2,7 @@ package filem
 
 import (
 	"encoding/binary"
+	"kqdb/src/recordm"
 	"log"
 	"os"
 )
@@ -161,4 +162,8 @@ func (fh *FileHandle) SaveMetaInfo(mi MetaInfo) (err error) {
 	file.WriteAt(CurSeqIdBytes, 4)
 	file.WriteAt(CurNodePageId, 8)
 	return err
+}
+
+func GetPage(name recordm.TableName, pageNum int) *recordm.Page {
+	return nil
 }

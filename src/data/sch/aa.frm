@@ -1,1 +1,0 @@
-{"Name":"aa","Columns":[{"Name":"idaaa","DataType":1,"DataWidth":22,"IsNull":true,"IsUnique":true,"DefaultVal":"","Comment":"'223424'"}]}

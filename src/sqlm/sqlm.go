@@ -50,14 +50,22 @@ func HandSql(sql string) (result string) {
 }
 
 func handDdl(stmt *sqlparser.DDL) string {
-	table, err := systemm.GenTableByDdl(stmt)
-	if err != nil {
-		return err.Error()
+	switch stmt.Action {
+	case sqlparser.CreateStr:
+		table, err := systemm.GenTableByDdl(stmt)
+		if err != nil {
+			return err.Error()
+		}
+		err1 := systemm.SaveTableToFile(table)
+		if err1 != nil {
+			return err1.Error()
+		}
+	case sqlparser.AlterStr:
+	case sqlparser.DropStr:
+	default:
+		return "不支持的ddl类型:" + stmt.Action
 	}
-	err1 := systemm.SaveTableToFile(table)
-	if err1 != nil {
-		return err1.Error()
-	}
+
 	return "ok"
 }
 

@@ -1,6 +1,7 @@
 package sqlm
 
 import (
+	"kqdb/src/filem"
 	"kqdb/src/recordm"
 	"kqdb/src/systemm"
 )
@@ -18,7 +19,65 @@ type tableScan struct {
 	pageRowCursor int //当前page中第几个row
 }
 
-func (ts tableScan) getNextRow() *recordm.Row {
+func (ts *tableScan) getNextRow() *recordm.Row {
+	row := ts.getRow()
+
+	//如果没有获取到row，则pageCursor+1，pageRowCursor置0，重新获取
+	if row == nil {
+		ts.pageCursor = ts.pageCursor + 1
+		ts.pageRowCursor = 0
+		row = ts.getRow()
+	}
+
+	return row
+}
+
+//获取当前cursor中的row
+func (ts *tableScan) getRow() *recordm.Row {
+	//从buffer_pool中获取page
+	tName := recordm.TableName(ts.tableName)
+	var page recordm.Page
+	pageList := recordm.BufferPool[tName].PageList
+	for e := pageList.Front(); e != nil; e = e.Next() {
+		p := e.Value.(recordm.Page)
+		if p.PageNum == ts.pageCursor {
+			page = p
+			break
+		}
+	}
+	//如果page链上没有，从脏链上获取
+	if (page == recordm.Page{}) {
+		dirtyPageList := recordm.BufferPool[tName].DirtyPageList
+		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
+			p := e.Value.(recordm.Page)
+			if p.PageNum == ts.pageCursor {
+				page = p
+				break
+			}
+		}
+	}
+
+	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
+	if (page == recordm.Page{}) {
+		p := filem.GetPage(tName, ts.pageCursor)
+		if p != nil {
+			page = *p
+			//放入buffer_pool
+			pageList.PushFront(*p)
+		} else {
+			return nil
+		}
+	}
+
+	//从page中获取row
+	rowList := page.RowList
+	for e := rowList.Front(); e != nil; e = e.Next() {
+		row := e.Value.(recordm.Row)
+		if ts.pageRowCursor == row.RowNum {
+			return &row
+		}
+	}
+
 	return nil
 }
 

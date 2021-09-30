@@ -14,12 +14,14 @@ type rawRow struct {
 }
 
 type Row struct {
+	RowNum  int               //从0开始
 	Table   systemm.Table     //表
 	Content map[string]string //列名：列值，列值为string
 }
 
 type Page struct {
-	row_list *list.List
+	PageNum int        //从0开始
+	RowList *list.List //元素不是row指针
 }
 
 func InsertRecord(bytes []byte) (nodeId int, err error) {

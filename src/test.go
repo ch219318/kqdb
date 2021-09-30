@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 func main() {
 
@@ -31,6 +35,16 @@ func main() {
 	number3 := numbers[2:5]
 	printSlice(number3)
 
+	str, _ := os.Getwd()
+	fmt.Println("wd:%s", str)
+
+	path, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	dir := filepath.Dir(path)
+	fmt.Println(path) // for example /home/user/main
+	fmt.Println(dir)  // for example /home/user
 }
 
 func printSlice(x []int) {

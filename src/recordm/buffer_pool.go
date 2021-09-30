@@ -4,15 +4,15 @@ import (
 	"container/list"
 )
 
-type buffer_table struct {
-	page_list       *list.List
-	dirty_page_list *list.List
+type BufferTable struct {
+	PageList      *list.List //元素不是page指针
+	DirtyPageList *list.List
 }
 
 //创建buffer pool数据结构
-type table_name string
+type TableName string
 
-var Buffer_pool = make(map[table_name]buffer_table)
+var BufferPool = make(map[TableName]BufferTable)
 
 //插入databuffer
 

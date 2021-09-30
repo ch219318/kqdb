@@ -2,13 +2,13 @@ package systemm
 
 import (
 	"github.com/xwb1989/sqlparser"
+	"github.com/xwb1989/sqlparser/dependency/sqltypes"
 	"log"
 	"strings"
 	// "time"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 //系统管理模块
@@ -50,37 +50,60 @@ func (ge grammerError) Error() string {
 
 //根据ddl语句生成表结构体
 func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
-	//todo sql语言校验
-	words := SqlToWords(sql)
+
 	genTable := new(Table)
-	genTable.Name = words[2]
-	indexs1 := index(words, "(")
-	indexs2 := index(words, ",")
-	indexs3 := index(words, ")")
-	log.Println(indexs1)
-	log.Println(indexs2)
-	log.Println(indexs3)
-	slice := make([]int, 0)
-	slice = append(slice, indexs1[0])
-	slice = append(slice, indexs2...)
-	slice = append(slice, indexs3[len(indexs3)-1])
-	log.Println(slice)
-	colNumber := len(slice) - 1 //列数量
+	genTable.Name = stmt.Table.Name.String()
+
+	astCols := stmt.TableSpec.Columns
+	colNumber := len(astCols) //列数量
 	columns := make([]Column, colNumber)
 	for i := 0; i < colNumber; i++ {
-		startIndex := slice[i]
-		endIndex := slice[i+1]
-		colWords := words[startIndex+1 : endIndex]
-		log.Println(colWords)
-		col, err := genColumn(colWords)
+		astCol := astCols[i]
+		col, err := genColumn(astCol)
 		if err != nil {
 			return genTable, err
 		}
 		columns[i] = col
 	}
-	log.Println(columns)
+	//log.Println(columns)
+
 	genTable.Columns = columns
 	return genTable, nil
+}
+
+//根据ddl生成column
+func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
+	col := new(Column)
+	astColName := astColDef.Name
+	astColType := astColDef.Type
+
+	col.Name = astColName.String()
+
+	switch astColType.SQLType() {
+	case sqltypes.Uint32:
+		col.DataType = TypeInt
+	case sqltypes.VarChar:
+		col.DataType = TypeString
+	default:
+		return *col, grammerError{"不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()}
+	}
+
+	switch astColType.NotNull {
+	case sqlparser.BoolVal(true):
+		col.IsNull = false
+	case sqlparser.BoolVal(false):
+		col.IsNull = true
+	default:
+		return *col, grammerError{"字段" + col.Name + "格式有误"}
+	}
+
+	//todo
+	col.DataWidth = 20
+	col.IsUnique = false
+	col.DefaultVal = "de"
+	col.Comment = "co"
+
+	return *col, nil
 }
 
 //保存表结构体到frm文件
@@ -104,94 +127,3 @@ func SaveTableToFile(table *Table) error {
 }
 
 //根据frm文件生成表结构体
-
-//把sql语句转换为一个一个单词
-func SqlToWords(sql string) (words []string) {
-	// runes := ([]rune)sql
-	chars := strings.Split(sql, "")
-	specialChars := "(),;"
-	word := ""
-	for _, char := range chars {
-		if char == " " {
-			words = append(words, word)
-			word = ""
-		} else if strings.Contains(specialChars, char) {
-			words = append(words, word, char)
-			// words = append(words, char)
-			word = ""
-		} else {
-			word = word + char
-		}
-	}
-	words = append(words, word)
-	log.Printf("%v,%d\n", words, len(words))
-	return
-}
-
-func index(words []string, word string) (indexs []int) {
-	return index0(words, word, false)
-}
-
-//查询词在词切片中位置
-func index0(words []string, word string, isIgnoreCase bool) (indexs []int) {
-	if isIgnoreCase {
-		for n, w := range words {
-			if strings.ToLower(w) == strings.ToLower(word) {
-				indexs = append(indexs, n)
-			}
-		}
-	} else {
-		for n, w := range words {
-			if w == word {
-				indexs = append(indexs, n)
-			}
-		}
-	}
-	return
-}
-
-//根据ddl词切片生成column
-func genColumn(words []string) (Column, error) {
-	col := new(Column)
-	col.Name = words[0]
-	switch strings.ToLower(words[1]) {
-	case "number":
-		col.DataType = TypeInt
-	case "varchar2":
-		col.DataType = TypeString
-	default:
-		return *col, grammerError{"不支持字段:" + col.Name + "的字段类型:" + words[1]}
-	}
-	width, err := strconv.ParseInt(words[3], 0, 64)
-	if err != nil {
-		return *col, err
-	}
-	col.DataWidth = int(width)
-	indexs1 := index0(words, "NULL", true) //忽略大小写
-	switch len(indexs1) {
-	case 0:
-		col.IsNull = true
-	case 1:
-		col.IsNull = false
-	default:
-		return *col, grammerError{"字段" + col.Name + "格式有误"}
-	}
-	indexs2 := index0(words, "unique", true)
-	switch len(indexs2) {
-	case 0:
-		col.IsUnique = false
-	case 1:
-		col.IsUnique = true
-	default:
-		return *col, grammerError{"字段" + col.Name + "格式有误"}
-	}
-	indexs3 := index0(words, "default", true)
-	if len(indexs3) == 1 {
-		col.DefaultVal = words[indexs3[0]+1]
-	}
-	indexs4 := index0(words, "comment", true)
-	if len(indexs4) == 1 {
-		col.Comment = words[indexs4[0]+1]
-	}
-	return *col, nil
-}
