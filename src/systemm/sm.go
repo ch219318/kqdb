@@ -4,7 +4,7 @@ import (
 	"github.com/xwb1989/sqlparser"
 	"github.com/xwb1989/sqlparser/dependency/sqltypes"
 	"log"
-	"strings"
+	"path/filepath"
 	// "time"
 	"encoding/json"
 	"fmt"
@@ -12,6 +12,20 @@ import (
 )
 
 //系统管理模块
+
+var HomeDir = initHomeDir()
+var BinDir = filepath.Join(HomeDir, "bin")
+var DataDir = filepath.Join(HomeDir, "data")
+
+func initHomeDir() string {
+	path, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	dir := filepath.Dir(filepath.Dir(path))
+	fmt.Println("homeDir:", dir)
+	return dir
+}
 
 //定义列结构体
 type Table struct {
@@ -52,7 +66,7 @@ func (ge grammerError) Error() string {
 func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 
 	genTable := new(Table)
-	genTable.Name = stmt.Table.Name.String()
+	genTable.Name = stmt.NewName.Name.String()
 
 	astCols := stmt.TableSpec.Columns
 	colNumber := len(astCols) //列数量
@@ -80,7 +94,7 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	col.Name = astColName.String()
 
 	switch astColType.SQLType() {
-	case sqltypes.Uint32:
+	case sqltypes.Int32:
 		col.DataType = TypeInt
 	case sqltypes.VarChar:
 		col.DataType = TypeString
@@ -113,16 +127,19 @@ func SaveTableToFile(table *Table) error {
 		return err
 	}
 	log.Println("json:" + string(bytes))
-	file, err := os.Create("/Users/chenkaiqing/Documents/golang/workspace/src/kqdb/data/sch/" +
-		table.Name + ".frm")
+
+	tablePath := filepath.Join(DataDir, "example", table.Name+".frm")
+	file, err := os.Create(tablePath)
 	defer file.Close()
 	if err != nil {
 		return err
 	}
+
 	_, err1 := file.Write(bytes)
 	if err1 != nil {
 		return err1
 	}
+
 	return nil
 }
 

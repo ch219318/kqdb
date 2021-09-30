@@ -122,8 +122,8 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 	return err
 }
 
-func (fh *FileHandle) GetData() (bytes []byte, err error) {
-}
+//func (fh *FileHandle) GetData() (bytes []byte, err error) {
+//}
 
 type MetaInfo struct {
 	CurPageId     int //下一个待分配page的id，以2049开始，初始值为2049

@@ -140,7 +140,7 @@ func (j *join) getNextRow() *recordm.Row {
 
 	//todo 列名可能重复
 	resultContent := mergeMaps(j.leftRow.Content, rightRow.Content)
-	resultRow := recordm.Row{tempTable, resultContent}
+	resultRow := recordm.Row{0, tempTable, resultContent}
 
 	//收尾：如果当前cursor为末尾，则获取下一个左表数据，cursor重置为0；否则，cursor加1
 	if len(j.allRightRowS) == j.cursor+1 { //cursor处于最末尾

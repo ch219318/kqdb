@@ -1,6 +1,7 @@
 package sqlm
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/xwb1989/sqlparser"
 	"kqdb/src/recordm"
@@ -22,7 +23,7 @@ func HandSql(sql string) (result string) {
 
 	result = "ok"
 
-	stmt, err := sqlparser.Parse(sql)
+	stmt, err := sqlparser.ParseStrictDDL(sql)
 	if err != nil {
 		log.Println("sql格式错误:" + sql)
 		return "sql格式错误:" + sql
@@ -79,16 +80,20 @@ func handSelect(stmt *sqlparser.Select) string {
 	logicalPlan := transToLocalPlan(stmt)
 
 	//生成物理计划
-	physicalPlan := physicalPlan{}
+	physicalPlan := physicalPlan{logicalPlan.root}
 
 	//执行
 	op := physicalPlan.root
 	var rows []recordm.Row
-	for i := op.getNextRow(); i != (recordm.Row{}); i = op.getNextRow() {
-		rows = append(rows, i)
+	for e := op.getNextRow(); e != nil; e = op.getNextRow() {
+		rows = append(rows, *e)
 	}
 
-	return ""
+	bytes, err := json.Marshal(rows)
+	if err != nil {
+		return err.Error()
+	}
+	return string(bytes)
 }
 
 func check(statement sqlparser.Statement) {
@@ -96,16 +101,18 @@ func check(statement sqlparser.Statement) {
 }
 
 func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
-	plan := logicalPlan{}
+	root := project{}
+	op1 := tableScan{}
+
 	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
 		switch n := node.(type) {
-		case *sqlparser.Select:
-			_ = n
-		case *sqlparser.Insert:
-		case *sqlparser.DDL:
+		case *sqlparser.AliasedExpr:
+			_ = n.Expr
 		}
 		return true, nil
 	}, stmt)
+
+	plan := logicalPlan{}
 	return plan
 }
 

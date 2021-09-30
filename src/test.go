@@ -43,8 +43,10 @@ func main() {
 		panic(err)
 	}
 	dir := filepath.Dir(path)
-	fmt.Println(path) // for example /home/user/main
-	fmt.Println(dir)  // for example /home/user
+	dir1 := filepath.Join(dir, "data11", "dd.cc")
+	fmt.Println(path)
+	fmt.Println(dir)
+	fmt.Println(dir1)
 }
 
 func printSlice(x []int) {

@@ -1,4 +1,5 @@
 BINARY_NAME=hello
+dlv=/Users/chenkaiqing/Library/Application Support/IntelliJIdea2018.2/intellij-go/lib/dlv/mac/dlv
 
 build: clean
 	go build -o bin/test -v src/test.go
@@ -9,3 +10,12 @@ build: clean
 clean:
 	rm -rf bin/*
 	rm -rf data/example/*
+
+run_test:
+	go build -o bin/test src/test.go
+	bin/test
+
+debug_s:
+	go build -o bin/server -gcflags "all=-N -l" src/server.go
+	"$(dlv)" --listen=localhost:54402 --headless=true --api-version=2 --backend=default exec bin/server
+
