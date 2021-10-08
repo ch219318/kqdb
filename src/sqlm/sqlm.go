@@ -57,7 +57,7 @@ func handDdl(stmt *sqlparser.DDL) string {
 		if err != nil {
 			return err.Error()
 		}
-		err1 := systemm.SaveTableToFile(table)
+		err1 := systemm.GenFileForTable(table)
 		if err1 != nil {
 			return err1.Error()
 		}

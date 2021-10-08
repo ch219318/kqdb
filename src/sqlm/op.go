@@ -1,7 +1,6 @@
 package sqlm
 
 import (
-	"kqdb/src/filem"
 	"kqdb/src/recordm"
 	"kqdb/src/systemm"
 )
@@ -59,7 +58,7 @@ func (ts *tableScan) getRow() *recordm.Row {
 
 	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
 	if (page == recordm.Page{}) {
-		p := filem.GetPage(tName, ts.pageCursor)
+		p := GetPage(tName, ts.pageCursor)
 		if p != nil {
 			page = *p
 			//放入buffer_pool
@@ -78,6 +77,10 @@ func (ts *tableScan) getRow() *recordm.Row {
 		}
 	}
 
+	return nil
+}
+
+func GetPage(name recordm.TableName, pageNum int) *recordm.Page {
 	return nil
 }
 

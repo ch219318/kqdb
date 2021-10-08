@@ -2,9 +2,10 @@ package filem
 
 import (
 	"encoding/binary"
-	"kqdb/src/recordm"
+	"kqdb/src/global"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 //文件管理模块
@@ -16,10 +17,9 @@ const (
 	DATA_FILE_INIT_SIZE                  = 9 * SIZE_M //数据文件初始大小
 	DATA_FILE_HEADER_SIZE                = 8 * SIZE_M //数据文件文件头大小
 	DATA_FILE_HEADER_METAINFO_SIZE       = 1 * SIZE_K //数据文件头里元信息大小
-	DATA_FILE_PAGE_SIZE                  = 4 * SIZE_K //数据文件分页大小
+	PAGE_SIZE                            = 8 * SIZE_K //分页大小
 	DATA_FILE_EXT_NAME                   = "data"     //数据文件扩展名
-	DATA_FILE_BASE_PATH                  = "../data/"
-	FRAME_FILE_EXT_NAME                  = "frm" //结构文件扩展名
+	FRAME_FILE_EXT_NAME                  = "frm"      //结构文件扩展名
 	NODE_SIZE                            = 8 * SIZE_B
 )
 
@@ -33,37 +33,43 @@ type PageHandle struct {
 	PageNodeId int //
 }
 
-func CreateDataFile(name string) (erro error) {
-	log.Printf("开始创建数据文件:%s.%s\n", name, DATA_FILE_EXT_NAME)
-	file, err := os.Create(DATA_FILE_BASE_PATH + name + "." + DATA_FILE_EXT_NAME)
+func CreateDataFile(fileName string) error {
+	log.Printf("开始创建数据文件:%s.%s\n", fileName, DATA_FILE_EXT_NAME)
+
+	dataPath := filepath.Join(global.DataDir, "example", fileName+"."+DATA_FILE_EXT_NAME)
+	file, err := os.Create(dataPath)
 	defer file.Close()
-	//设置元信息
-	metabytes := make([]byte, 1024)
-	metabytes[2] = 0x08
-	metabytes[3] = 0x01
-	metabytes[7] = 0x01
-	metabytes[11] = 0x02
-	file.Write(metabytes)
-	buf := make([]byte, 1024)
-	if err == nil {
-		max := DATA_FILE_INIT_SIZE/1024 - 1
-		log.Printf("max:%v\n", max)
-		for i := int64(0); i < max; i++ {
-			file.Write(buf)
-		}
-	} else {
-		log.Printf("创建数据文件:%s.%s失败\n", name, DATA_FILE_EXT_NAME)
+	if err != nil {
+		log.Printf("创建数据文件:%s.%s失败\n", fileName, DATA_FILE_EXT_NAME)
 		return err
 	}
-	log.Printf("创建数据文件:%s.%s成功\n", name, DATA_FILE_EXT_NAME)
-	return erro
+
+	//文件头page
+	metabytes := make([]byte, PAGE_SIZE)
+	file.Write(metabytes)
+
+	//初始化data-page
+	pageBuf := make([]byte, PAGE_SIZE)
+	pageLower := uint16(24)
+	pageUpper := uint16(PAGE_SIZE - 1)
+	binary.BigEndian.PutUint16(pageBuf[2:4], pageLower)
+	binary.BigEndian.PutUint16(pageBuf[4:6], pageUpper)
+
+	//写入初始化data-page
+	num := DATA_FILE_INIT_SIZE/PAGE_SIZE - 1
+	for i := 0; i < int(num); i++ {
+		file.Write(pageBuf)
+	}
+
+	log.Printf("创建数据文件:%s.%s成功\n", fileName, DATA_FILE_EXT_NAME)
+	return nil
 }
 
-func OpenDataFile(path string, name string) (fileHandle *FileHandle, err error) {
-	address := DATA_FILE_BASE_PATH + path + "/" + name
+func OpenDataFile(schema string, fullFileName string) (fileHandle *FileHandle, err error) {
+	address := filepath.Join(global.DataDir, schema, fullFileName)
 	datafile, err1 := os.OpenFile(address, os.O_RDWR|os.O_APPEND, os.ModePerm)
 	if err1 == nil {
-		file := FileHandle{Path: path, FileName: name, File: datafile}
+		file := FileHandle{Path: schema, FileName: fullFileName, File: datafile}
 		fileHandle = &file
 	} else {
 		return fileHandle, err1
@@ -83,15 +89,15 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 	//获取文件头元信息
 	mi := fh.GetMetaInfo()
 
-	if int64(length) <= DATA_FILE_PAGE_SIZE {
+	if int64(length) <= PAGE_SIZE {
 		//添加数据部分
-		content := make([]byte, DATA_FILE_PAGE_SIZE)
+		content := make([]byte, PAGE_SIZE)
 		copy(content, bytes)
 		// // 查找文件末尾的偏移量
 		// off, _ := file.Seek(0, os.SEEK_END)
 		// // 从末尾的偏移量开始写入内容
 		// n, err2 := file.WriteAt(content, off)
-		off := (int64(mi.CurPageId) - 1) * (DATA_FILE_PAGE_SIZE)
+		off := (int64(mi.CurPageId) - 1) * (PAGE_SIZE)
 		n, err1 := file.WriteAt(content, off)
 		if err1 != nil {
 			return err1
@@ -108,7 +114,7 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 		node[5] = seqIdOfNode[2]
 		node[6] = seqIdOfNode[3]
 		node[7] = 0x02 //00000010，倒数第一位表示数据还是地址，第二位表示node是否有效
-		file.WriteAt(node, DATA_FILE_PAGE_SIZE+(int64(mi.CurSeqId)-1)*NODE_SIZE)
+		file.WriteAt(node, PAGE_SIZE+(int64(mi.CurSeqId)-1)*NODE_SIZE)
 		//更新文件头元信息
 		mi.CurPageId = mi.CurPageId + 1
 		mi.CurSeqId = mi.CurSeqId + 1
@@ -162,8 +168,4 @@ func (fh *FileHandle) SaveMetaInfo(mi MetaInfo) (err error) {
 	file.WriteAt(CurSeqIdBytes, 4)
 	file.WriteAt(CurNodePageId, 8)
 	return err
-}
-
-func GetPage(name recordm.TableName, pageNum int) *recordm.Page {
-	return nil
 }

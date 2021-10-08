@@ -3,6 +3,8 @@ package systemm
 import (
 	"github.com/xwb1989/sqlparser"
 	"github.com/xwb1989/sqlparser/dependency/sqltypes"
+	"kqdb/src/filem"
+	"kqdb/src/global"
 	"log"
 	"path/filepath"
 	// "time"
@@ -12,20 +14,6 @@ import (
 )
 
 //系统管理模块
-
-var HomeDir = initHomeDir()
-var BinDir = filepath.Join(HomeDir, "bin")
-var DataDir = filepath.Join(HomeDir, "data")
-
-func initHomeDir() string {
-	path, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	dir := filepath.Dir(filepath.Dir(path))
-	fmt.Println("homeDir:", dir)
-	return dir
-}
 
 //定义列结构体
 type Table struct {
@@ -120,15 +108,15 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	return *col, nil
 }
 
-//保存表结构体到frm文件
-func SaveTableToFile(table *Table) error {
+func GenFileForTable(table *Table) error {
+	//保存表结构体到frm文件
 	bytes, err := json.Marshal(table)
 	if err != nil {
 		return err
 	}
 	log.Println("json:" + string(bytes))
 
-	tablePath := filepath.Join(DataDir, "example", table.Name+".frm")
+	tablePath := filepath.Join(global.DataDir, "example", table.Name+".frm")
 	file, err := os.Create(tablePath)
 	defer file.Close()
 	if err != nil {
@@ -138,6 +126,12 @@ func SaveTableToFile(table *Table) error {
 	_, err1 := file.Write(bytes)
 	if err1 != nil {
 		return err1
+	}
+
+	//初始化表data文件
+	err2 := filem.CreateDataFile(table.Name)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
