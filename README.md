@@ -1,6 +1,8 @@
-make
+一、build：
+make build
 
-debug步骤：
-make debug_s
-启动go remote
-
+二、debug步骤：
+1、安装dlv
+2、make debug_s
+3、启动go remote
+4、启动客户端bin/client

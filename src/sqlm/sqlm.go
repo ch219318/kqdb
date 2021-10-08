@@ -101,8 +101,8 @@ func check(statement sqlparser.Statement) {
 }
 
 func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
-	root := project{}
-	op1 := tableScan{}
+	//root := project{}
+	//op1 := tableScan{}
 
 	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
 		switch n := node.(type) {

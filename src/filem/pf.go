@@ -17,7 +17,7 @@ const (
 	DATA_FILE_HEADER_SIZE                = 8 * SIZE_M //数据文件文件头大小
 	DATA_FILE_HEADER_METAINFO_SIZE       = 1 * SIZE_K //数据文件头里元信息大小
 	DATA_FILE_PAGE_SIZE                  = 4 * SIZE_K //数据文件分页大小
-	DATA_FILE_EXT_NAME                   = "myd"      //数据文件扩展名
+	DATA_FILE_EXT_NAME                   = "data"     //数据文件扩展名
 	DATA_FILE_BASE_PATH                  = "../data/"
 	FRAME_FILE_EXT_NAME                  = "frm" //结构文件扩展名
 	NODE_SIZE                            = 8 * SIZE_B
