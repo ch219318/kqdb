@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -49,16 +49,12 @@ func main() {
 	fmt.Println(dir)
 	fmt.Println(dir1)
 
-	i := uint16(1024*8 - 1)
-	fmt.Printf("%x\n", i)
-	b := make([]byte, 8)
-	b[0] = 11
-	b[1] = 22
-	b[3] = 33
-	binary.BigEndian.PutUint16(b[1:3], i)
-	fmt.Println(b)
-	//a := binary.BigEndian.Uint16(b)
-	//fmt.Println(a)
+	fmt.Println("====")
+
+	fmt.Println(strings.Trim("frmaa.frm", "frm"))
+	fmt.Println(strings.TrimRight("frmaa.frm", "frm"))
+	fmt.Println(strings.TrimSuffix("frmaa.frm", "frm"))
+
 }
 
 func printSlice(x []int) {

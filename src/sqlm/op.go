@@ -1,6 +1,7 @@
 package sqlm
 
 import (
+	"kqdb/src/global"
 	"kqdb/src/recordm"
 	"kqdb/src/systemm"
 )
@@ -36,7 +37,7 @@ func (ts *tableScan) getRow() *recordm.Row {
 	//从buffer_pool中获取page
 	tName := recordm.TableName(ts.tableName)
 	var page recordm.Page
-	pageList := recordm.BufferPool[tName].PageList
+	pageList := recordm.BufferPool[global.DefaultSchemaName][tName].PageList
 	for e := pageList.Front(); e != nil; e = e.Next() {
 		p := e.Value.(recordm.Page)
 		if p.PageNum == ts.pageCursor {
@@ -46,7 +47,7 @@ func (ts *tableScan) getRow() *recordm.Row {
 	}
 	//如果page链上没有，从脏链上获取
 	if (page == recordm.Page{}) {
-		dirtyPageList := recordm.BufferPool[tName].DirtyPageList
+		dirtyPageList := recordm.BufferPool[global.DefaultSchemaName][tName].DirtyPageList
 		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
 			p := e.Value.(recordm.Page)
 			if p.PageNum == ts.pageCursor {

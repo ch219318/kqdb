@@ -36,7 +36,7 @@ type PageHandle struct {
 func CreateDataFile(fileName string) error {
 	log.Printf("开始创建数据文件:%s.%s\n", fileName, DATA_FILE_EXT_NAME)
 
-	dataPath := filepath.Join(global.DataDir, "example", fileName+"."+DATA_FILE_EXT_NAME)
+	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName+"."+DATA_FILE_EXT_NAME)
 	file, err := os.Create(dataPath)
 	defer file.Close()
 	if err != nil {

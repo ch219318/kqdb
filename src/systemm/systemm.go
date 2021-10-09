@@ -1,12 +1,16 @@
 package systemm
 
 import (
+	"errors"
 	"github.com/xwb1989/sqlparser"
 	"github.com/xwb1989/sqlparser/dependency/sqltypes"
+	"io/ioutil"
 	"kqdb/src/filem"
 	"kqdb/src/global"
 	"log"
 	"path/filepath"
+	"strings"
+
 	// "time"
 	"encoding/json"
 	"fmt"
@@ -14,6 +18,74 @@ import (
 )
 
 //系统管理模块
+
+var SchemaMap = initSchemaMap()
+
+//key为schema和table
+func initSchemaMap() map[string]map[string]*Table {
+	schemaMap := make(map[string]map[string]*Table)
+
+	//获取所有schema
+	dirNames, err := listDir(global.DataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	PathSep := string(os.PathSeparator)
+	for _, dirName := range dirNames {
+		dirPath := filepath.Join(global.DataDir, PathSep, dirName)
+		fileNames, err := listFile(dirPath, filem.FRAME_FILE_EXT_NAME)
+		if err != nil {
+			log.Fatal(err)
+		}
+		tableMap := make(map[string]*Table)
+		for _, fileName := range fileNames {
+			filePath := filepath.Join(dirPath, PathSep, fileName)
+			table := genTableFromFile(filePath)
+			tableName := strings.TrimSuffix(fileName, "."+filem.FRAME_FILE_EXT_NAME)
+			tableMap[tableName] = table
+		}
+		schemaName := dirName
+		schemaMap[schemaName] = tableMap
+	}
+
+	return schemaMap
+}
+
+//获取指定目录下的所有文件，不进入下一级目录搜索，可以匹配后缀过滤。
+func listFile(dirPth string, suffix string) (fileNames []string, err error) {
+	fileNames = make([]string, 0, 10)
+	dir, err := ioutil.ReadDir(dirPth)
+	if err != nil {
+		return nil, err
+	}
+	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
+	for _, fi := range dir {
+		if fi.IsDir() { // 忽略目录
+			continue
+		}
+		if strings.HasSuffix(strings.ToUpper(fi.Name()), "."+suffix) { //匹配文件
+			fileNames = append(fileNames, fi.Name())
+		}
+	}
+	return
+}
+
+//获取指定目录下的所有目录
+func listDir(dirPth string) (dirNames []string, err error) {
+	dirNames = make([]string, 0, 10)
+	dir, err := ioutil.ReadDir(dirPth)
+	if err != nil {
+		return nil, err
+	}
+	for _, fi := range dir {
+		if fi.IsDir() {
+			dirNames = append(dirNames, fi.Name())
+		} else {
+			continue
+		}
+	}
+	return
+}
 
 //定义列结构体
 type Table struct {
@@ -52,9 +124,15 @@ func (ge grammerError) Error() string {
 
 //根据ddl语句生成表结构体
 func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
+	tableName := stmt.NewName.Name.String()
+	//判断表是否已存在
+	_, ok := SchemaMap[global.DefaultSchemaName][tableName]
+	if ok {
+		return nil, errors.New(global.DefaultSchemaName + "." + tableName + "表已存在")
+	}
 
 	genTable := new(Table)
-	genTable.Name = stmt.NewName.Name.String()
+	genTable.Name = tableName
 
 	astCols := stmt.TableSpec.Columns
 	colNumber := len(astCols) //列数量
@@ -68,8 +146,11 @@ func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 		columns[i] = col
 	}
 	//log.Println(columns)
-
 	genTable.Columns = columns
+
+	//添加至SchemaMap
+	SchemaMap[global.DefaultSchemaName][tableName] = genTable
+
 	return genTable, nil
 }
 
@@ -116,7 +197,7 @@ func GenFileForTable(table *Table) error {
 	}
 	log.Println("json:" + string(bytes))
 
-	tablePath := filepath.Join(global.DataDir, "example", table.Name+".frm")
+	tablePath := filepath.Join(global.DataDir, global.DefaultSchemaName, table.Name+".frm")
 	file, err := os.Create(tablePath)
 	defer file.Close()
 	if err != nil {
@@ -138,3 +219,15 @@ func GenFileForTable(table *Table) error {
 }
 
 //根据frm文件生成表结构体
+func genTableFromFile(filePath string) *Table {
+	bytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var table *Table = new(Table)
+	err1 := json.Unmarshal(bytes, table)
+	if err1 != nil {
+		log.Fatal(err1)
+	}
+	return table
+}

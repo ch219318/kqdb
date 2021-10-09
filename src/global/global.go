@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+const DefaultSchemaName = "example"
+
 var IsolationLevel = "RR" //RC、RR、SE
 
 var AutoCommit = true

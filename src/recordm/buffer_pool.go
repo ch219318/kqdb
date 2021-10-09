@@ -2,6 +2,7 @@ package recordm
 
 import (
 	"container/list"
+	"kqdb/src/systemm"
 )
 
 type BufferTable struct {
@@ -12,7 +13,23 @@ type BufferTable struct {
 //创建buffer pool数据结构
 type TableName string
 
-var BufferPool = make(map[TableName]BufferTable)
+var BufferPool = initBufferPool()
+
+func initBufferPool() map[string]map[TableName]*BufferTable {
+	schemaPool := make(map[string]map[TableName]*BufferTable)
+
+	for schemaName := range systemm.SchemaMap {
+		tablePool := make(map[TableName]*BufferTable)
+		tableMap := systemm.SchemaMap[schemaName]
+		for tableName := range tableMap {
+			t := TableName(tableName)
+			tablePool[t] = new(BufferTable)
+		}
+		schemaPool[schemaName] = tablePool
+	}
+
+	return schemaPool
+}
 
 //插入databuffer
 

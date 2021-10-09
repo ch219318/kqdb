@@ -117,5 +117,16 @@ func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
 }
 
 func handInsert(stmt *sqlparser.Insert) string {
+	tableName := stmt.Table.Name.String()
+	log.Println(tableName)
+	//todo 判断表是否存在
+
+	switch node := stmt.Rows.(type) {
+	case sqlparser.Values:
+		for _, v := range node {
+			log.Println(v)
+		}
+	}
+
 	return "result"
 }
