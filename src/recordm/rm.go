@@ -2,7 +2,6 @@ package recordm
 
 import (
 	"container/list"
-	"kqdb/src/systemm"
 )
 
 //纪录管理模块
@@ -15,7 +14,7 @@ type rawRow struct {
 
 type Row struct {
 	RowNum  int               //从0开始
-	Table   systemm.Table     //表
+	Table   Table             //表
 	Content map[string]string //列名：列值，列值为string
 }
 

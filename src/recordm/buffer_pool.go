@@ -2,7 +2,6 @@ package recordm
 
 import (
 	"container/list"
-	"kqdb/src/systemm"
 )
 
 type BufferTable struct {
@@ -18,9 +17,9 @@ var BufferPool = initBufferPool()
 func initBufferPool() map[string]map[TableName]*BufferTable {
 	schemaPool := make(map[string]map[TableName]*BufferTable)
 
-	for schemaName := range systemm.SchemaMap {
+	for schemaName := range SchemaMap {
 		tablePool := make(map[TableName]*BufferTable)
-		tableMap := systemm.SchemaMap[schemaName]
+		tableMap := SchemaMap[schemaName]
 		for tableName := range tableMap {
 			t := TableName(tableName)
 			tablePool[t] = new(BufferTable)

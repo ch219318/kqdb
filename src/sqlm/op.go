@@ -3,7 +3,6 @@ package sqlm
 import (
 	"kqdb/src/global"
 	"kqdb/src/recordm"
-	"kqdb/src/systemm"
 )
 
 type relationAlgebraOp interface {
@@ -87,7 +86,7 @@ func GetPage(name recordm.TableName, pageNum int) *recordm.Page {
 
 type project struct {
 	child        relationAlgebraOp
-	selectedCols []systemm.Column
+	selectedCols []recordm.Column
 }
 
 func (p project) getNextRow() *recordm.Row {
@@ -140,7 +139,7 @@ func (j *join) getNextRow() *recordm.Row {
 	//构建临时表
 	tempTableCols := append(j.leftRow.Table.Columns, rightRow.Table.Columns...)
 	tempTableName := j.leftRow.Table.Name + rightRow.Table.Name
-	tempTable := systemm.Table{tempTableName, tempTableCols}
+	tempTable := recordm.Table{tempTableName, tempTableCols}
 
 	//todo 列名可能重复
 	resultContent := mergeMaps(j.leftRow.Content, rightRow.Content)

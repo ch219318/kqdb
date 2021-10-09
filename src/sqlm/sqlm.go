@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/xwb1989/sqlparser"
 	"kqdb/src/recordm"
-	"kqdb/src/systemm"
 	"log"
 )
 
@@ -53,11 +52,11 @@ func HandSql(sql string) (result string) {
 func handDdl(stmt *sqlparser.DDL) string {
 	switch stmt.Action {
 	case sqlparser.CreateStr:
-		table, err := systemm.GenTableByDdl(stmt)
+		table, err := recordm.GenTableByDdl(stmt)
 		if err != nil {
 			return err.Error()
 		}
-		err1 := systemm.GenFileForTable(table)
+		err1 := recordm.GenFileForTable(table)
 		if err1 != nil {
 			return err1.Error()
 		}
