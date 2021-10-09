@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/xwb1989/sqlparser"
+	"kqdb/src/global"
 	"kqdb/src/recordm"
 	"log"
 )
@@ -70,7 +71,7 @@ func handDdl(stmt *sqlparser.DDL) string {
 }
 
 func handSelect(stmt *sqlparser.Select) string {
-	//var rows []recordm.Row
+	//var tuples []recordm.Tuple
 
 	//语义检查
 	check(stmt)
@@ -83,12 +84,12 @@ func handSelect(stmt *sqlparser.Select) string {
 
 	//执行
 	op := physicalPlan.root
-	var rows []recordm.Row
-	for e := op.getNextRow(); e != nil; e = op.getNextRow() {
-		rows = append(rows, *e)
+	var tuples []recordm.Tuple
+	for e := op.getNextTuple(); e != nil; e = op.getNextTuple() {
+		tuples = append(tuples, *e)
 	}
 
-	bytes, err := json.Marshal(rows)
+	bytes, err := json.Marshal(tuples)
 	if err != nil {
 		return err.Error()
 	}
@@ -118,7 +119,12 @@ func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
 func handInsert(stmt *sqlparser.Insert) string {
 	tableName := stmt.Table.Name.String()
 	log.Println(tableName)
-	//todo 判断表是否存在
+
+	//判断表是否存在
+	isExist := recordm.TableIsExist(tableName)
+	if !isExist {
+		return global.DefaultSchemaName + "." + tableName + "表不存在"
+	}
 
 	switch node := stmt.Rows.(type) {
 	case sqlparser.Values:
@@ -126,6 +132,9 @@ func handInsert(stmt *sqlparser.Insert) string {
 			log.Println(v)
 		}
 	}
+
+	tuple := new(recordm.Tuple)
+	recordm.InsertRecord(*tuple)
 
 	return "result"
 }

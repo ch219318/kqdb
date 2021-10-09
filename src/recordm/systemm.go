@@ -125,9 +125,9 @@ func (ge grammerError) Error() string {
 //根据ddl语句生成表结构体
 func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 	tableName := stmt.NewName.Name.String()
-	//判断表是否已存在
-	_, ok := SchemaMap[global.DefaultSchemaName][tableName]
-	if ok {
+
+	isExist := TableIsExist(tableName)
+	if isExist {
 		return nil, errors.New(global.DefaultSchemaName + "." + tableName + "表已存在")
 	}
 
@@ -148,10 +148,17 @@ func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 	//log.Println(columns)
 	genTable.Columns = columns
 
-	//添加至SchemaMap
+	//添加至SchemaMap和BufferPool
 	SchemaMap[global.DefaultSchemaName][tableName] = genTable
+	BufferPool[global.DefaultSchemaName][TableName(tableName)] = new(BufferTable)
 
 	return genTable, nil
+}
+
+//判断表是否已存在
+func TableIsExist(tableName string) bool {
+	_, ok := SchemaMap[global.DefaultSchemaName][tableName]
+	return ok
 }
 
 //根据ddl生成column

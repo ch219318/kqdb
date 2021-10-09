@@ -60,6 +60,6 @@ func handResponse(conn net.Conn) {
 		log.Fatal(rErr.Error())
 	}
 
-	log.Printf("<<%s\n", response)
+	log.Printf("<< %s\n", response)
 	return
 }

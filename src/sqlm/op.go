@@ -6,33 +6,33 @@ import (
 )
 
 type relationAlgebraOp interface {
-	getNextRow() *recordm.Row
+	getNextTuple() *recordm.Tuple
 }
 
 type indexScan struct {
 }
 
 type tableScan struct {
-	tableName     string
-	pageCursor    int //当前page
-	pageRowCursor int //当前page中第几个row
+	tableName       string
+	pageCursor      int //当前page
+	pageTupleCursor int //当前page中第几个tuple
 }
 
-func (ts *tableScan) getNextRow() *recordm.Row {
-	row := ts.getRow()
+func (ts *tableScan) getNextTuple() *recordm.Tuple {
+	tuple := ts.getTuple()
 
-	//如果没有获取到row，则pageCursor+1，pageRowCursor置0，重新获取
-	if row == nil {
+	//如果没有获取到tuple，则pageCursor+1，pageTupleCursor置0，重新获取
+	if tuple == nil {
 		ts.pageCursor = ts.pageCursor + 1
-		ts.pageRowCursor = 0
-		row = ts.getRow()
+		ts.pageTupleCursor = 0
+		tuple = ts.getTuple()
 	}
 
-	return row
+	return tuple
 }
 
-//获取当前cursor中的row
-func (ts *tableScan) getRow() *recordm.Row {
+//获取当前cursor中的tuple
+func (ts *tableScan) getTuple() *recordm.Tuple {
 	//从buffer_pool中获取page
 	tName := recordm.TableName(ts.tableName)
 	var page recordm.Page
@@ -68,12 +68,12 @@ func (ts *tableScan) getRow() *recordm.Row {
 		}
 	}
 
-	//从page中获取row
-	rowList := page.RowList
-	for e := rowList.Front(); e != nil; e = e.Next() {
-		row := e.Value.(recordm.Row)
-		if ts.pageRowCursor == row.RowNum {
-			return &row
+	//从page中获取tuple
+	tupleList := page.TupleList
+	for e := tupleList.Front(); e != nil; e = e.Next() {
+		tuple := e.Value.(recordm.Tuple)
+		if ts.pageTupleCursor == tuple.TupleNum {
+			return &tuple
 		}
 	}
 
@@ -89,17 +89,17 @@ type project struct {
 	selectedCols []recordm.Column
 }
 
-func (p project) getNextRow() *recordm.Row {
-	row := p.child.getNextRow()
-	if row == nil {
+func (p project) getNextTuple() *recordm.Tuple {
+	tuple := p.child.getNextTuple()
+	if tuple == nil {
 		return nil
 	} else {
 		m := make(map[string]string)
 		for _, col := range p.selectedCols {
-			m[col.Name] = row.Content[col.Name]
+			m[col.Name] = tuple.Content[col.Name]
 		}
-		row.Content = m
-		return row
+		tuple.Content = m
+		return tuple
 	}
 }
 
@@ -107,53 +107,53 @@ type filter struct {
 }
 
 type join struct {
-	left         relationAlgebraOp
-	right        relationAlgebraOp
-	leftRow      *recordm.Row  //指示当前左表行
-	allRightRowS []recordm.Row //所有右表数据
-	cursor       int           //上面数据集的游标,初始值为0
+	left           relationAlgebraOp
+	right          relationAlgebraOp
+	leftTuple      *recordm.Tuple  //指示当前左表行
+	allRightTupleS []recordm.Tuple //所有右表数据
+	cursor         int             //上面数据集的游标,初始值为0
 }
 
-func (j *join) getNextRow() *recordm.Row {
+func (j *join) getNextTuple() *recordm.Tuple {
 
 	//加载右表所有数据，优化方向：加载小表
-	if len(j.allRightRowS) == 0 {
+	if len(j.allRightTupleS) == 0 {
 		for {
-			row := j.right.getNextRow()
-			if row == nil {
+			tuple := j.right.getNextTuple()
+			if tuple == nil {
 				break
 			} else {
-				j.allRightRowS = append(j.allRightRowS, *row)
+				j.allRightTupleS = append(j.allRightTupleS, *tuple)
 			}
 		}
 	}
 
 	//初始化当前左表指示
-	if j.leftRow == nil {
-		j.leftRow = j.left.getNextRow()
+	if j.leftTuple == nil {
+		j.leftTuple = j.left.getNextTuple()
 	}
 
-	//生成最终row
-	rightRow := j.allRightRowS[j.cursor]
+	//生成最终tuple
+	rightTuple := j.allRightTupleS[j.cursor]
 
 	//构建临时表
-	tempTableCols := append(j.leftRow.Table.Columns, rightRow.Table.Columns...)
-	tempTableName := j.leftRow.Table.Name + rightRow.Table.Name
+	tempTableCols := append(j.leftTuple.Table.Columns, rightTuple.Table.Columns...)
+	tempTableName := j.leftTuple.Table.Name + rightTuple.Table.Name
 	tempTable := recordm.Table{tempTableName, tempTableCols}
 
 	//todo 列名可能重复
-	resultContent := mergeMaps(j.leftRow.Content, rightRow.Content)
-	resultRow := recordm.Row{0, tempTable, resultContent}
+	resultContent := mergeMaps(j.leftTuple.Content, rightTuple.Content)
+	resultTuple := recordm.Tuple{0, tempTable, resultContent}
 
 	//收尾：如果当前cursor为末尾，则获取下一个左表数据，cursor重置为0；否则，cursor加1
-	if len(j.allRightRowS) == j.cursor+1 { //cursor处于最末尾
-		j.leftRow = j.left.getNextRow()
+	if len(j.allRightTupleS) == j.cursor+1 { //cursor处于最末尾
+		j.leftTuple = j.left.getNextTuple()
 		j.cursor = 0
 	} else {
 		j.cursor = j.cursor + 1
 	}
 
-	return &resultRow
+	return &resultTuple
 
 }
 

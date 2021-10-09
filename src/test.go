@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,6 +55,12 @@ func main() {
 	fmt.Println(strings.Trim("frmaa.frm", "frm"))
 	fmt.Println(strings.TrimRight("frmaa.frm", "frm"))
 	fmt.Println(strings.TrimSuffix("frmaa.frm", "frm"))
+
+	l := list.New()
+	// 尾部添加
+	l.PushBack("canon")
+	// 头部添加
+	l.PushFront(67)
 
 }
 
