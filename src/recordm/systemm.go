@@ -30,18 +30,17 @@ func initSchemaMap() map[string]map[string]*Table {
 	if err != nil {
 		log.Fatal(err)
 	}
-	PathSep := string(os.PathSeparator)
 	for _, dirName := range dirNames {
-		dirPath := filepath.Join(global.DataDir, PathSep, dirName)
-		fileNames, err := listFile(dirPath, filem.FRAME_FILE_EXT_NAME)
+		dirPath := filepath.Join(global.DataDir, dirName)
+		fileNames, err := listFile(dirPath, filem.FrameFileSuf)
 		if err != nil {
 			log.Fatal(err)
 		}
 		tableMap := make(map[string]*Table)
 		for _, fileName := range fileNames {
-			filePath := filepath.Join(dirPath, PathSep, fileName)
+			filePath := filepath.Join(dirPath, fileName)
 			table := genTableFromFile(filePath)
-			tableName := strings.TrimSuffix(fileName, "."+filem.FRAME_FILE_EXT_NAME)
+			tableName := strings.TrimSuffix(fileName, "."+filem.FrameFileSuf)
 			tableMap[tableName] = table
 		}
 		schemaName := dirName

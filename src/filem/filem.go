@@ -17,9 +17,9 @@ const (
 	DATA_FILE_INIT_SIZE                  = 9 * SIZE_M //数据文件初始大小
 	DATA_FILE_HEADER_SIZE                = 8 * SIZE_M //数据文件文件头大小
 	DATA_FILE_HEADER_METAINFO_SIZE       = 1 * SIZE_K //数据文件头里元信息大小
-	PAGE_SIZE                            = 8 * SIZE_K //分页大小
-	DATA_FILE_EXT_NAME                   = "data"     //数据文件扩展名
-	FRAME_FILE_EXT_NAME                  = "frm"      //结构文件扩展名
+	PageSize                             = 8 * SIZE_K //分页大小
+	DataFileSuf                          = "data"     //数据文件扩展名
+	FrameFileSuf                         = "frm"      //结构文件扩展名
 	NODE_SIZE                            = 8 * SIZE_B
 )
 
@@ -34,34 +34,34 @@ type PageHandle struct {
 }
 
 func CreateDataFile(fileName string) error {
-	log.Printf("开始创建数据文件:%s.%s\n", fileName, DATA_FILE_EXT_NAME)
+	log.Printf("开始创建数据文件:%s.%s\n", fileName, DataFileSuf)
 
-	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName+"."+DATA_FILE_EXT_NAME)
+	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName+"."+DataFileSuf)
 	file, err := os.Create(dataPath)
 	defer file.Close()
 	if err != nil {
-		log.Printf("创建数据文件:%s.%s失败\n", fileName, DATA_FILE_EXT_NAME)
+		log.Printf("创建数据文件:%s.%s失败\n", fileName, DataFileSuf)
 		return err
 	}
 
 	//文件头page
-	metabytes := make([]byte, PAGE_SIZE)
+	metabytes := make([]byte, PageSize)
 	file.Write(metabytes)
 
 	//初始化data-page
-	pageBuf := make([]byte, PAGE_SIZE)
+	pageBuf := make([]byte, PageSize)
 	pageLower := uint16(24)
-	pageUpper := uint16(PAGE_SIZE - 1)
+	pageUpper := uint16(PageSize - 1)
 	binary.BigEndian.PutUint16(pageBuf[2:4], pageLower)
 	binary.BigEndian.PutUint16(pageBuf[4:6], pageUpper)
 
 	//写入初始化data-page
-	num := DATA_FILE_INIT_SIZE/PAGE_SIZE - 1
+	num := DATA_FILE_INIT_SIZE/PageSize - 1
 	for i := 0; i < int(num); i++ {
 		file.Write(pageBuf)
 	}
 
-	log.Printf("创建数据文件:%s.%s成功\n", fileName, DATA_FILE_EXT_NAME)
+	log.Printf("创建数据文件:%s.%s成功\n", fileName, DataFileSuf)
 	return nil
 }
 
@@ -89,15 +89,15 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 	//获取文件头元信息
 	mi := fh.GetMetaInfo()
 
-	if int64(length) <= PAGE_SIZE {
+	if int64(length) <= PageSize {
 		//添加数据部分
-		content := make([]byte, PAGE_SIZE)
+		content := make([]byte, PageSize)
 		copy(content, bytes)
 		// // 查找文件末尾的偏移量
 		// off, _ := file.Seek(0, os.SEEK_END)
 		// // 从末尾的偏移量开始写入内容
 		// n, err2 := file.WriteAt(content, off)
-		off := (int64(mi.CurPageId) - 1) * (PAGE_SIZE)
+		off := (int64(mi.CurPageId) - 1) * (PageSize)
 		n, err1 := file.WriteAt(content, off)
 		if err1 != nil {
 			return err1
@@ -114,7 +114,7 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 		node[5] = seqIdOfNode[2]
 		node[6] = seqIdOfNode[3]
 		node[7] = 0x02 //00000010，倒数第一位表示数据还是地址，第二位表示node是否有效
-		file.WriteAt(node, PAGE_SIZE+(int64(mi.CurSeqId)-1)*NODE_SIZE)
+		file.WriteAt(node, PageSize+(int64(mi.CurSeqId)-1)*NODE_SIZE)
 		//更新文件头元信息
 		mi.CurPageId = mi.CurPageId + 1
 		mi.CurSeqId = mi.CurSeqId + 1

@@ -1,7 +1,11 @@
 package recordm
 
 import (
+	"kqdb/src/filem"
+	"kqdb/src/global"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -28,11 +32,24 @@ func flushDirtyList() {
 			bufferTable := tablePool[tableName]
 			dirtyPageList := bufferTable.DirtyPageList
 			if dirtyPageList != nil {
+
+				fileName := string(tableName) + "." + filem.DataFileSuf
+				tablePath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName)
+				file, err := os.Open(tablePath)
+				if err != nil {
+					log.Fatal(err)
+				}
 				for e := dirtyPageList.Front(); e != nil; e = e.Next() {
 					dirtyPage := e.Value.(Page)
-					//todo
 					log.Print(dirtyPage)
+
+					bytes := make([]byte, filem.PageSize)
+					//todo dirtyPage转bytes
+
+					offset := int64(dirtyPage.PageNum) * filem.PageSize
+					file.WriteAt(bytes, offset)
 				}
+
 			}
 
 		}
