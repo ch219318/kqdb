@@ -10,17 +10,17 @@ import (
 
 //文件管理模块
 const (
-	SIZE_B                         int64 = 1
-	SIZE_K                               = 1024 * SIZE_B
-	SIZE_M                               = 1024 * SIZE_K
-	SIZE_G                               = 1024 * SIZE_M
-	DATA_FILE_INIT_SIZE                  = 9 * SIZE_M //数据文件初始大小
-	DATA_FILE_HEADER_SIZE                = 8 * SIZE_M //数据文件文件头大小
-	DATA_FILE_HEADER_METAINFO_SIZE       = 1 * SIZE_K //数据文件头里元信息大小
-	PageSize                             = 8 * SIZE_K //分页大小
-	DataFileSuf                          = "data"     //数据文件扩展名
-	FrameFileSuf                         = "frm"      //结构文件扩展名
-	NODE_SIZE                            = 8 * SIZE_B
+	SIZE_B                         int = 1
+	SIZE_K                             = 1024 * SIZE_B
+	SIZE_M                             = 1024 * SIZE_K
+	SIZE_G                             = 1024 * SIZE_M
+	DATA_FILE_INIT_SIZE                = 9 * SIZE_M //数据文件初始大小
+	DATA_FILE_HEADER_SIZE              = 8 * SIZE_M //数据文件文件头大小
+	DATA_FILE_HEADER_METAINFO_SIZE     = 1 * SIZE_K //数据文件头里元信息大小
+	PageSize                           = 8 * SIZE_K //分页大小
+	DataFileSuf                        = "data"     //数据文件扩展名
+	FrameFileSuf                       = "frm"      //结构文件扩展名
+	NODE_SIZE                          = 8 * SIZE_B
 )
 
 type FileHandle struct {
@@ -89,7 +89,7 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 	//获取文件头元信息
 	mi := fh.GetMetaInfo()
 
-	if int64(length) <= PageSize {
+	if length <= PageSize {
 		//添加数据部分
 		content := make([]byte, PageSize)
 		copy(content, bytes)
@@ -97,8 +97,8 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 		// off, _ := file.Seek(0, os.SEEK_END)
 		// // 从末尾的偏移量开始写入内容
 		// n, err2 := file.WriteAt(content, off)
-		off := (int64(mi.CurPageId) - 1) * (PageSize)
-		n, err1 := file.WriteAt(content, off)
+		off := (mi.CurPageId - 1) * PageSize
+		n, err1 := file.WriteAt(content, int64(off))
 		if err1 != nil {
 			return err1
 		}
@@ -114,7 +114,8 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 		node[5] = seqIdOfNode[2]
 		node[6] = seqIdOfNode[3]
 		node[7] = 0x02 //00000010，倒数第一位表示数据还是地址，第二位表示node是否有效
-		file.WriteAt(node, PageSize+(int64(mi.CurSeqId)-1)*NODE_SIZE)
+		offset := PageSize + (mi.CurSeqId-1)*NODE_SIZE
+		file.WriteAt(node, int64(offset))
 		//更新文件头元信息
 		mi.CurPageId = mi.CurPageId + 1
 		mi.CurSeqId = mi.CurSeqId + 1

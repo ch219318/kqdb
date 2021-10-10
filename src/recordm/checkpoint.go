@@ -46,8 +46,8 @@ func flushDirtyList() {
 					bytes := make([]byte, filem.PageSize)
 					//todo dirtyPage转bytes
 
-					offset := int64(dirtyPage.PageNum) * filem.PageSize
-					file.WriteAt(bytes, offset)
+					offset := dirtyPage.PageNum * filem.PageSize
+					file.WriteAt(bytes, int64(offset))
 				}
 
 			}

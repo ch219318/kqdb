@@ -11,11 +11,11 @@ import (
 
 //索引模块，b+树非聚簇索引，索引文件放在data文件夹，后缀index
 const (
-	SIZE_B                    int64 = 1
-	SIZE_K                          = 1024 * SIZE_B
-	SIZE_M                          = 1024 * SIZE_K
-	OVERFLOW_PAGE_SIZE              = 1 * SIZE_K //溢出页大小
-	ROOTNODE_INFO_HEADER_SIZE       = 1 * SIZE_M //b树索引根节点消息文件头大小
+	SIZE_B                    int = 1
+	SIZE_K                        = 1024 * SIZE_B
+	SIZE_M                        = 1024 * SIZE_K
+	OVERFLOW_PAGE_SIZE            = 1 * SIZE_K //溢出页大小
+	ROOTNODE_INFO_HEADER_SIZE     = 1 * SIZE_M //b树索引根节点消息文件头大小
 	//每一个根节点信息大小,第一个字节1表示使用中,0表示未使用，2-16表示字段名字，17-20表示根节点位置
 	ROOTNODE_INFO_SIZE   = 1 * SIZE_K
 	INDEX_FILE_EXT_NAME  = "index"    //索引文件扩展名
