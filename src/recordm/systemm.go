@@ -160,6 +160,14 @@ func TableIsExist(tableName string) bool {
 	return ok
 }
 
+func GetTable(tableName string) *Table {
+	t, ok := SchemaMap[global.DefaultSchemaName][tableName]
+	if ok {
+		return t
+	}
+	return nil
+}
+
 //根据ddl生成column
 func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	col := new(Column)

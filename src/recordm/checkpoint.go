@@ -31,7 +31,7 @@ func flushDirtyList() {
 		for tableName := range tablePool {
 			bufferTable := tablePool[tableName]
 			dirtyPageList := bufferTable.DirtyPageList
-			if dirtyPageList != nil {
+			if dirtyPageList.Len() > 0 {
 
 				fileName := string(tableName) + "." + filem.DataFileSuf
 				tablePath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName)
@@ -43,9 +43,8 @@ func flushDirtyList() {
 					dirtyPage := e.Value.(Page)
 					log.Print(dirtyPage)
 
-					bytes := make([]byte, filem.PageSize)
-					//todo dirtyPage转bytes
-
+					//dirtyPage转bytes
+					bytes := dirtyPage.Marshal()
 					offset := dirtyPage.PageNum * filem.PageSize
 					file.WriteAt(bytes, int64(offset))
 				}

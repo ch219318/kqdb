@@ -126,15 +126,26 @@ func handInsert(stmt *sqlparser.Insert) string {
 		return global.DefaultSchemaName + "." + tableName + "表不存在"
 	}
 
+	//获取表
+	table := recordm.GetTable(tableName)
+
 	switch node := stmt.Rows.(type) {
 	case sqlparser.Values:
-		for _, v := range node {
-			log.Println(v)
+		for _, valTuple := range node {
+
+			tuple := recordm.Tuple{-1, *table, make(map[string]string)}
+			for _, expr := range valTuple {
+				switch expr := expr.(type) {
+				case *sqlparser.SQLVal:
+					log.Println(expr.Val)
+					//todo sqlVal转string
+					tuple.Content["aa"] = "aa"
+				}
+			}
+			recordm.InsertRecord(tuple)
+
 		}
 	}
-
-	tuple := new(recordm.Tuple)
-	recordm.InsertRecord(*tuple)
 
 	return "result"
 }

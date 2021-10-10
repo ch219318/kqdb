@@ -22,7 +22,9 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 		tableMap := SchemaMap[schemaName]
 		for tableName := range tableMap {
 			t := TableName(tableName)
-			tablePool[t] = new(BufferTable)
+			bufferTable := BufferTable{list.New(), list.New()}
+			//todo 加入一定数量page
+			tablePool[t] = &bufferTable
 		}
 		schemaPool[schemaName] = tablePool
 	}
