@@ -19,7 +19,7 @@ type rawTuple struct {
 type Tuple struct {
 	TupleNum int               //从0开始
 	Table    Table             //表
-	Content  map[string]string //列名：列值，列值为string
+	Content  map[string]string //列名：列值，列值为字节数组
 }
 
 func (page *Tuple) Marshal() []byte {
