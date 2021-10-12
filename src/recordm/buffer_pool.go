@@ -2,6 +2,8 @@ package recordm
 
 import (
 	"container/list"
+	"kqdb/src/filem"
+	"log"
 )
 
 type BufferTable struct {
@@ -22,8 +24,26 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 		tableMap := SchemaMap[schemaName]
 		for tableName := range tableMap {
 			t := TableName(tableName)
-			bufferTable := BufferTable{list.New(), list.New()}
-			//todo 加入一定数量page
+
+			pageList := list.New()
+			//加入一定数量page
+			fileHandler, err := filem.OpenDataFile(schemaName, tableName)
+			if err != nil {
+				log.Fatal(err)
+			}
+			for i := 1; i < 10; i++ {
+				bytes, err := fileHandler.GetPageData(i)
+				if err != nil {
+					log.Fatal(err)
+				}
+				page := new(Page)
+				page.UnMarshal(bytes, i)
+				pageList.PushBack(*page)
+			}
+			fileHandler.Close()
+
+			bufferTable := BufferTable{pageList, list.New()}
+
 			tablePool[t] = &bufferTable
 		}
 		schemaPool[schemaName] = tablePool

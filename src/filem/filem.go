@@ -23,13 +23,13 @@ const (
 	NODE_SIZE                          = 8 * SIZE_B
 )
 
-type FileHandle struct {
+type FileHandler struct {
 	Path     string //相对于data文件夹
 	FileName string
 	File     *os.File
 }
 
-type PageHandle struct {
+type PageHandler struct {
 	PageNodeId int //
 }
 
@@ -65,25 +65,37 @@ func CreateDataFile(fileName string) error {
 	return nil
 }
 
-func OpenDataFile(schema string, fullFileName string) (fileHandle *FileHandle, err error) {
-	address := filepath.Join(global.DataDir, schema, fullFileName)
-	datafile, err1 := os.OpenFile(address, os.O_RDWR|os.O_APPEND, os.ModePerm)
-	if err1 == nil {
-		file := FileHandle{Path: schema, FileName: fullFileName, File: datafile}
-		fileHandle = &file
+func OpenDataFile(schemaName string, tableName string) (fileHandle *FileHandler, err error) {
+	address := filepath.Join(global.DataDir, schemaName, tableName+"."+DataFileSuf)
+	datafile, err := os.OpenFile(address, os.O_RDWR|os.O_APPEND, os.ModePerm)
+	if err == nil {
+		fileHandle = new(FileHandler)
+		fileHandle.Path = schemaName
+		fileHandle.FileName = tableName
+		fileHandle.File = datafile
 	} else {
-		return fileHandle, err1
+		return
 	}
 	log.Printf("fileHandle指针地址%p\n", fileHandle)
-	return fileHandle, err
+	return
 }
 
-func CloseDataFile(fh *FileHandle) error {
-	err1 := fh.File.Close()
-	return err1
+func (fh *FileHandler) Close() error {
+	err := fh.File.Close()
+	return err
 }
 
-func (fh *FileHandle) AddData(bytes []byte) (err error) {
+func (fh *FileHandler) GetPageData(pageNum int) ([]byte, error) {
+	bytes := make([]byte, PageSize)
+	offset := pageNum * PageSize
+	_, err := fh.File.ReadAt(bytes, int64(offset))
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
+func (fh *FileHandler) AddData(bytes []byte) (err error) {
 	length := len(bytes)
 	file := fh.File
 	//获取文件头元信息
@@ -129,7 +141,7 @@ func (fh *FileHandle) AddData(bytes []byte) (err error) {
 	return err
 }
 
-//func (fh *FileHandle) GetData() (bytes []byte, err error) {
+//func (fh *FileHandler) GetData() (bytes []byte, err error) {
 //}
 
 type MetaInfo struct {
@@ -139,7 +151,7 @@ type MetaInfo struct {
 }
 
 //获取文件头中node表元信息
-func (fh *FileHandle) GetMetaInfo() (mi MetaInfo) {
+func (fh *FileHandler) GetMetaInfo() (mi MetaInfo) {
 	file := fh.File
 	content := make([]byte, DATA_FILE_HEADER_METAINFO_SIZE)
 	n, err2 := file.Read(content)
@@ -152,7 +164,7 @@ func (fh *FileHandle) GetMetaInfo() (mi MetaInfo) {
 }
 
 //保存文件头中node表元信息
-func (fh *FileHandle) SaveMetaInfo(mi MetaInfo) (err error) {
+func (fh *FileHandler) SaveMetaInfo(mi MetaInfo) (err error) {
 	file := fh.File
 	CurPageIdBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(CurPageIdBytes, uint32(mi.CurPageId))

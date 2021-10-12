@@ -11,9 +11,8 @@ func main() {
 	printSlice(numbers)
 
 	numbers1 := make([]int, 0, 5)
-	numbers2 := append(numbers1, numbers...)
 	printSlice(numbers1)
-	printSlice(numbers2)
+	printSlice(numbers[2:2])
 
 	int1 := -2 << 3
 	fmt.Println(int1)

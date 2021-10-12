@@ -16,8 +16,7 @@ func initTicker() *time.Ticker {
 	ticker := time.NewTicker(time.Second * 3)
 	go func() {
 		for {
-			a := <-ticker.C
-			log.Println(a)
+			<-ticker.C
 			flushDirtyList()
 		}
 	}()
@@ -33,6 +32,7 @@ func flushDirtyList() {
 			dirtyPageList := bufferTable.DirtyPageList
 			if dirtyPageList.Len() > 0 {
 
+				log.Println("flushDirtyList:" + schemaName + "." + string(tableName))
 				fileName := string(tableName) + "." + filem.DataFileSuf
 				tablePath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName)
 				file, err := os.Open(tablePath)

@@ -14,7 +14,7 @@ run_test:
 	go build -o target/bin/test src/test.go
 	target/bin/test
 
-debug_s:
+debug:
 	go build -o target/bin/client -v src/client.go
 	go build -o target/bin/server -gcflags "all=-N -l" src/server.go
 	dlv --listen=localhost:54402 --headless=true --api-version=2 --backend=default exec target/bin/server

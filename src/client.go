@@ -21,7 +21,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	defer conn.Close()
-	log.Printf("连接为：%v\n", conn)
+	log.Printf("客户端端启动成功，连接为：%v\n", conn)
 
 	for {
 		log.Printf(">>")
