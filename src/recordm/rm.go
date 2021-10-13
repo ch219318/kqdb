@@ -186,7 +186,7 @@ func (page *Page) UnMarshal(bytes []byte, pageNum int, schemaName string, tableN
 			tupleBs := bytes[tupleOffset : tupleOffset+tupleLen]
 			tuple := new(Tuple)
 			tuple.UnMarshal(tupleBs, i, schemaName, tableName)
-			tupleList.PushBack(tuple)
+			tupleList.PushBack(*tuple)
 		}
 	}
 

@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/xwb1989/sqlparser/dependency/sqltypes"
-	"strconv"
 )
 
 func main() {
@@ -13,10 +11,10 @@ func main() {
 	printSlice(numbers)
 
 	numbers1 := make([]int, 0, 5)
-	printSlice(numbers1)
-	printSlice(numbers[2:2])
+	numbers1[1] = 66
+	numbers1[3] = 66
 
-	sqltypes.NewVarChar()
+	printSlice(numbers1)
 
 	fmt.Println("====")
 

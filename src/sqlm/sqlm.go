@@ -50,10 +50,10 @@ func HandSql(sql string) (result string) {
 	return
 }
 
-func handDdl(stmt *sqlparser.DDL) string {
-	switch stmt.Action {
+func handDdl(ddlStmt *sqlparser.DDL) string {
+	switch ddlStmt.Action {
 	case sqlparser.CreateStr:
-		table, err := recordm.GenTableByDdl(stmt)
+		table, err := recordm.GenTableByDdl(ddlStmt)
 		if err != nil {
 			return err.Error()
 		}
@@ -64,28 +64,28 @@ func handDdl(stmt *sqlparser.DDL) string {
 	case sqlparser.AlterStr:
 	case sqlparser.DropStr:
 	default:
-		return "不支持的ddl类型:" + stmt.Action
+		return "不支持的ddl类型:" + ddlStmt.Action
 	}
 
 	return "ok"
 }
 
-func handSelect(stmt *sqlparser.Select) string {
+func handSelect(selectStmt *sqlparser.Select) string {
 	//var tuples []recordm.Tuple
 
 	//语义检查
-	check(stmt)
+	check(selectStmt)
 
 	//生成逻辑计划
-	logicalPlan := transToLocalPlan(stmt)
+	logicalPlan := transToLocalPlan(selectStmt)
 
 	//生成物理计划
 	physicalPlan := physicalPlan{logicalPlan.root}
 
 	//执行
-	op := physicalPlan.root
+	rootOp := physicalPlan.root
 	var tuples []recordm.Tuple
-	for e := op.getNextTuple(); e != nil; e = op.getNextTuple() {
+	for e := rootOp.getNextTuple(); e != nil; e = rootOp.getNextTuple() {
 		tuples = append(tuples, *e)
 	}
 
@@ -100,24 +100,37 @@ func check(statement sqlparser.Statement) {
 
 }
 
-func transToLocalPlan(stmt sqlparser.SQLNode) logicalPlan {
-	//root := project{}
-	//op1 := tableScan{}
+func transToLocalPlan(selectStmt *sqlparser.Select) logicalPlan {
+	tableName := ([]sqlparser.TableExpr)(selectStmt.From)[0].(*sqlparser.AliasedTableExpr).
+		Expr.(sqlparser.TableName).Name.String()
 
-	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-		switch n := node.(type) {
+	//构建select op
+	columns := make([]recordm.Column, 0)
+	for _, v := range selectStmt.SelectExprs {
+		switch i := v.(type) {
+		case *sqlparser.StarExpr:
+			columns = recordm.SchemaMap[global.DefaultSchemaName][tableName].Columns
 		case *sqlparser.AliasedExpr:
-			_ = n.Expr
+			log.Println(i)
+		case sqlparser.Nextval:
 		}
-		return true, nil
-	}, stmt)
 
-	plan := logicalPlan{}
+	}
+	root := new(project)
+	root.selectedCols = columns
+
+	//构建tableScan op
+	op1 := tableScan{tableName, 0, 0}
+
+	//组装op链
+	root.child = &op1
+
+	plan := logicalPlan{root}
 	return plan
 }
 
-func handInsert(stmt *sqlparser.Insert) string {
-	tableName := stmt.Table.Name.String()
+func handInsert(insertStmt *sqlparser.Insert) string {
+	tableName := insertStmt.Table.Name.String()
 	log.Println(tableName)
 
 	//判断表是否存在
@@ -130,7 +143,7 @@ func handInsert(stmt *sqlparser.Insert) string {
 	table := recordm.GetTable(tableName)
 	columns := table.Columns
 
-	switch node := stmt.Rows.(type) {
+	switch node := insertStmt.Rows.(type) {
 	case sqlparser.Values:
 		for _, valTuple := range node {
 

@@ -95,6 +95,8 @@ func (fh *FileHandler) GetPageData(pageNum int) ([]byte, error) {
 	return bytes, nil
 }
 
+//==============
+
 func (fh *FileHandler) AddData(bytes []byte) (err error) {
 	length := len(bytes)
 	file := fh.File
