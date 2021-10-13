@@ -137,13 +137,15 @@ func (j *join) getNextTuple() *recordm.Tuple {
 	rightTuple := j.allRightTupleS[j.cursor]
 
 	//构建临时表
-	tempTableCols := append(j.leftTuple.Table.Columns, rightTuple.Table.Columns...)
-	tempTableName := j.leftTuple.Table.Name + rightTuple.Table.Name
-	tempTable := recordm.Table{tempTableName, tempTableCols}
+	//leftColumns := recordm.SchemaMap[j.leftTuple.SchemaName][j.leftTuple.TableName].Columns
+	//rightColumns := recordm.SchemaMap[rightTuple.SchemaName][rightTuple.TableName].Columns
+	//tempTableCols := append(leftColumns, rightColumns...)
+	tempTableName := j.leftTuple.TableName + rightTuple.TableName
+	//tempTable := recordm.Table{tempTableName, tempTableCols}
 
 	//todo 列名可能重复
 	resultContent := mergeMaps(j.leftTuple.Content, rightTuple.Content)
-	resultTuple := recordm.Tuple{0, tempTable, resultContent}
+	resultTuple := recordm.Tuple{0, "tempSchema", tempTableName, resultContent}
 
 	//收尾：如果当前cursor为末尾，则获取下一个左表数据，cursor重置为0；否则，cursor加1
 	if len(j.allRightTupleS) == j.cursor+1 { //cursor处于最末尾

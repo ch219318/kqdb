@@ -37,7 +37,7 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 					log.Fatal(err)
 				}
 				page := new(Page)
-				page.UnMarshal(bytes, i)
+				page.UnMarshal(bytes, i, schemaName, tableName)
 				pageList.PushBack(*page)
 			}
 			fileHandler.Close()

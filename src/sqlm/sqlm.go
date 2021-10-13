@@ -128,24 +128,40 @@ func handInsert(stmt *sqlparser.Insert) string {
 
 	//获取表
 	table := recordm.GetTable(tableName)
+	columns := table.Columns
 
 	switch node := stmt.Rows.(type) {
 	case sqlparser.Values:
 		for _, valTuple := range node {
 
-			tuple := recordm.Tuple{-1, *table, make(map[string]string)}
-			for _, expr := range valTuple {
+			//构造tuple
+			content := make(map[string]string)
+			for i, expr := range valTuple {
 				switch expr := expr.(type) {
 				case *sqlparser.SQLVal:
-					log.Println(expr.Val)
-					//todo sqlVal转string
-					tuple.Content["aa"] = "aa"
+
+					//sqlVal转string
+					var colVal string
+					switch expr.Type {
+					case sqlparser.StrVal:
+						colVal = string(expr.Val)
+					case sqlparser.IntVal:
+						colVal = string(expr.Val)
+					default:
+						return "不支持的类型"
+					}
+					//log.Println("colVal:" + colVal)
+
+					column := columns[i]
+					content[column.Name] = colVal
 				}
 			}
+			tuple := recordm.Tuple{-1, global.DefaultSchemaName, tableName, content}
+			log.Println(tuple)
 			recordm.InsertRecord(tuple)
 
 		}
 	}
 
-	return "result"
+	return "ok"
 }
