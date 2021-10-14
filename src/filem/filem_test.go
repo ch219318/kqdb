@@ -10,7 +10,7 @@ func test_CreateDataFile(t *testing.T) {
 }
 
 func Test_AddData(t *testing.T) {
-	fileHandle, _ := OpenDataFile("sch", "test")
+	fileHandle, _ := OpenFile("sch", "test")
 	defer fileHandle.Close()
 	bytes := []byte("hello wiki!2")
 	err := fileHandle.AddData(bytes)
@@ -24,7 +24,7 @@ func test_GetMetaInfo(t *testing.T) {
 }
 
 func test_SaveMetaInfo(t *testing.T) {
-	fileHandle, _ := OpenDataFile("sch", "test.data")
+	fileHandle, _ := OpenFile("sch", "test.data")
 	defer fileHandle.Close()
 	t.Logf("%p", fileHandle)
 	mi := MetaInfo{233, 33, 34}

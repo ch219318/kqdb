@@ -82,12 +82,8 @@ func (ts *tableScan) getPage(pageNum int) recordm.Page {
 	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
 	if page == nil {
 		//从文件中获取page
-		fileHandler, err := filem.OpenDataFile(ts.schemaName, ts.tableName)
-		if err != nil {
-			log.Fatal(err)
-		}
+		fileHandler := filem.FilesMap[ts.schemaName][ts.tableName][1]
 		bytes, err := fileHandler.GetPageData(pageNum)
-		fileHandler.Close()
 		if err != nil {
 			log.Fatal(err)
 		}

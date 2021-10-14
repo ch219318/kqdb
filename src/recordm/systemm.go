@@ -26,13 +26,13 @@ func initSchemaMap() map[string]map[string]*Table {
 	schemaMap := make(map[string]map[string]*Table)
 
 	//获取所有schema
-	dirNames, err := listDir(global.DataDir)
+	dirNames, err := filem.ListDir(global.DataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, dirName := range dirNames {
 		dirPath := filepath.Join(global.DataDir, dirName)
-		fileNames, err := listFile(dirPath, filem.FrameFileSuf)
+		fileNames, err := filem.ListFile(dirPath, filem.FrameFileSuf)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -48,42 +48,6 @@ func initSchemaMap() map[string]map[string]*Table {
 	}
 
 	return schemaMap
-}
-
-//获取指定目录下的所有文件，不进入下一级目录搜索，可以匹配后缀过滤。
-func listFile(dirPth string, suffix string) (fileNames []string, err error) {
-	fileNames = make([]string, 0, 10)
-	dir, err := ioutil.ReadDir(dirPth)
-	if err != nil {
-		return nil, err
-	}
-	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
-	for _, fi := range dir {
-		if fi.IsDir() { // 忽略目录
-			continue
-		}
-		if strings.HasSuffix(strings.ToUpper(fi.Name()), "."+suffix) { //匹配文件
-			fileNames = append(fileNames, fi.Name())
-		}
-	}
-	return
-}
-
-//获取指定目录下的所有目录
-func listDir(dirPth string) (dirNames []string, err error) {
-	dirNames = make([]string, 0, 10)
-	dir, err := ioutil.ReadDir(dirPth)
-	if err != nil {
-		return nil, err
-	}
-	for _, fi := range dir {
-		if fi.IsDir() {
-			dirNames = append(dirNames, fi.Name())
-		} else {
-			continue
-		}
-	}
-	return
 }
 
 //定义列结构体

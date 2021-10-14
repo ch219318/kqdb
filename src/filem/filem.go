@@ -2,10 +2,13 @@ package filem
 
 import (
 	"encoding/binary"
+	"errors"
+	"io/ioutil"
 	"kqdb/src/global"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 //文件管理模块
@@ -27,7 +30,91 @@ const (
 	NODE_SIZE                          = 8 * SIZE_B
 )
 
+//定义列数据类型枚举值
+type FileType int
+
+const (
+	FileTypeData FileType = 1 + iota
+	FileTypeFrame
+)
+
+var FilesMap = initFilesMap()
+
+//key为schema和table。0位置为frm文件，1位置为data文件
+func initFilesMap() map[string]map[string][2]*FileHandler {
+	filesMap := make(map[string]map[string][2]*FileHandler)
+
+	//获取所有schema
+	dirNames, err := ListDir(global.DataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, dirName := range dirNames {
+		dirPath := filepath.Join(global.DataDir, dirName)
+		fileNames, err := ListFile(dirPath, FrameFileSuf)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fileMap := make(map[string][2]*FileHandler)
+		for _, fileName := range fileNames {
+			frameFileHander, err := openFile(FileTypeFrame, dirName, fileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+			dataFileHander, err := openFile(FileTypeData, dirName, fileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+			tableName := fileName
+			fileMap[tableName] = [2]*FileHandler{frameFileHander, dataFileHander}
+		}
+
+		schemaName := dirName
+		filesMap[schemaName] = fileMap
+	}
+
+	return filesMap
+}
+
+//获取指定目录下的所有目录
+func ListDir(dirPth string) (dirNames []string, err error) {
+	dirNames = make([]string, 0, 10)
+	dir, err := ioutil.ReadDir(dirPth)
+	if err != nil {
+		return nil, err
+	}
+	for _, fi := range dir {
+		if fi.IsDir() {
+			dirNames = append(dirNames, fi.Name())
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+//获取指定目录下的所有文件，不进入下一级目录搜索，可以匹配后缀过滤。
+func ListFile(dirPth string, suffix string) (fileNames []string, err error) {
+	fileNames = make([]string, 0, 10)
+	dir, err := ioutil.ReadDir(dirPth)
+	if err != nil {
+		return nil, err
+	}
+	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
+	for _, fi := range dir {
+		if fi.IsDir() { // 忽略目录
+			continue
+		}
+		if strings.HasSuffix(strings.ToUpper(fi.Name()), "."+suffix) { //匹配文件
+			fileNames = append(fileNames, fi.Name())
+		}
+	}
+	return
+}
+
 type FileHandler struct {
+	fileType FileType
 	Path     string //相对于data文件夹
 	FileName string
 	File     *os.File
@@ -69,35 +156,59 @@ func CreateDataFile(fileName string) error {
 	return nil
 }
 
-func OpenDataFile(schemaName string, tableName string) (fileHandle *FileHandler, err error) {
-	address := filepath.Join(global.DataDir, schemaName, tableName+"."+DataFileSuf)
-	datafile, err := os.OpenFile(address, os.O_RDWR|os.O_APPEND, os.ModePerm)
+func openFile(fileType FileType, schemaName string, tableName string) (fileHandle *FileHandler, err error) {
+	suf := ""
+	switch fileType {
+	case FileTypeData:
+		suf = DataFileSuf
+	case FileTypeFrame:
+		suf = FrameFileSuf
+	default:
+		log.Fatalln("不支持的文件类型:", fileType)
+	}
+
+	address := filepath.Join(global.DataDir, schemaName, tableName+"."+suf)
+	datafile, err := os.OpenFile(address, os.O_RDWR, os.ModePerm)
 	if err == nil {
 		fileHandle = new(FileHandler)
 		fileHandle.Path = schemaName
 		fileHandle.FileName = tableName
+		fileHandle.fileType = fileType
 		fileHandle.File = datafile
 	} else {
-		return
+		log.Fatalln(err)
 	}
-	log.Printf("打开文件：%s/%s\n", fileHandle.Path, fileHandle.FileName)
+	log.Printf("打开文件：%s/%s.%s\n", fileHandle.Path, fileHandle.FileName, suf)
 	return
 }
 
 func (fh *FileHandler) Close() error {
 	err := fh.File.Close()
-	log.Printf("关闭文件：%s/%s\n", fh.Path, fh.FileName)
+	suf := ""
+	switch fh.fileType {
+	case FileTypeData:
+		suf = DataFileSuf
+	case FileTypeFrame:
+		suf = FrameFileSuf
+	default:
+		log.Fatalln("不支持的文件类型:", fh.fileType)
+	}
+	log.Printf("关闭文件：%s/%s.%s\n", fh.Path, fh.FileName, suf)
 	return err
 }
 
 func (fh *FileHandler) GetPageData(pageNum int) ([]byte, error) {
-	bytes := make([]byte, PageSize)
-	offset := pageNum * PageSize
-	_, err := fh.File.ReadAt(bytes, int64(offset))
-	if err != nil {
-		return nil, err
+	if fh.fileType == FileTypeData {
+		bytes := make([]byte, PageSize)
+		offset := pageNum * PageSize
+		_, err := fh.File.ReadAt(bytes, int64(offset))
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	} else {
+		return nil, errors.New("文件类型错误")
 	}
-	return bytes, nil
 }
 
 //==============

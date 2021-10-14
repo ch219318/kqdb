@@ -27,10 +27,7 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 
 			pageList := list.New()
 			//加入一定数量page
-			fileHandler, err := filem.OpenDataFile(schemaName, tableName)
-			if err != nil {
-				log.Fatal(err)
-			}
+			fileHandler := filem.FilesMap[schemaName][tableName][1]
 			for i := 1; i < 10; i++ {
 				bytes, err := fileHandler.GetPageData(i)
 				if err != nil {
@@ -40,7 +37,6 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 				page.UnMarshal(bytes, i, schemaName, tableName)
 				pageList.PushBack(*page)
 			}
-			fileHandler.Close()
 
 			bufferTable := BufferTable{pageList, list.New()}
 
