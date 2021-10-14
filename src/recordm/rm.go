@@ -201,6 +201,8 @@ func InsertRecord(tuple Tuple) (err error) {
 	if dirtyPageList.Len() > 0 {
 		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
 			dirtyPage := e.Value.(Page)
+			//设置tupleNum
+			tuple.TupleNum = dirtyPage.TupleList.Len()
 			dirtyPage.TupleList.PushBack(tuple)
 			break
 		}
@@ -208,6 +210,8 @@ func InsertRecord(tuple Tuple) (err error) {
 		var page Page
 		for e := pageList.Front(); e != nil; e = e.Next() {
 			page = e.Value.(Page)
+			//设置tupleNum
+			tuple.TupleNum = page.TupleList.Len()
 			page.TupleList.PushBack(tuple)
 			//从page链中删除当前page
 			pageList.Remove(e)

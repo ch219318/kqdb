@@ -1,8 +1,9 @@
 package sqlm
 
 import (
-	"kqdb/src/global"
+	"kqdb/src/filem"
 	"kqdb/src/recordm"
+	"log"
 )
 
 type relationAlgebraOp interface {
@@ -13,75 +14,92 @@ type indexScan struct {
 }
 
 type tableScan struct {
+	schemaName      string
 	tableName       string
 	pageCursor      int //当前page
 	pageTupleCursor int //当前page中第几个tuple
 }
 
 func (ts *tableScan) getNextTuple() *recordm.Tuple {
-	tuple := ts.getTuple()
+	table := recordm.SchemaMap[ts.schemaName][ts.tableName]
 
-	//如果没有获取到tuple，则pageCursor+1，pageTupleCursor置0，重新获取
-	if tuple == nil {
-		ts.pageCursor = ts.pageCursor + 1
+	//从cursor处遍历page
+	for ts.pageCursor < table.PageTotal {
+		page := ts.getPage(ts.pageCursor)
+		tupleList := page.TupleList
+		totalTuple := tupleList.Len()
+
+		//从cursor处遍历tuple
+		for ts.pageTupleCursor < totalTuple {
+			//从page中获取tuple
+			var result *recordm.Tuple
+			for e := tupleList.Front(); e != nil; e = e.Next() {
+				tuple := e.Value.(recordm.Tuple)
+				if ts.pageTupleCursor == tuple.TupleNum {
+					result = &tuple
+				}
+			}
+			if result != nil {
+				ts.pageTupleCursor++
+				return result
+			} else {
+				break
+			}
+		}
+
+		ts.pageCursor++
 		ts.pageTupleCursor = 0
-		tuple = ts.getTuple()
 	}
 
-	return tuple
+	return nil
 }
 
-//获取当前cursor中的tuple
-func (ts *tableScan) getTuple() *recordm.Tuple {
+func (ts *tableScan) getPage(pageNum int) recordm.Page {
 	//从buffer_pool中获取page
 	tName := recordm.TableName(ts.tableName)
-	var page recordm.Page
-	pageList := recordm.BufferPool[global.DefaultSchemaName][tName].PageList
+	var page *recordm.Page
+	pageList := recordm.BufferPool[ts.schemaName][tName].PageList
 	for e := pageList.Front(); e != nil; e = e.Next() {
 		p := e.Value.(recordm.Page)
 		if p.PageNum == ts.pageCursor {
-			page = p
+			page = &p
 			break
 		}
 	}
+
 	//如果page链上没有，从脏链上获取
-	if (page == recordm.Page{}) {
-		dirtyPageList := recordm.BufferPool[global.DefaultSchemaName][tName].DirtyPageList
+	if page == nil {
+		dirtyPageList := recordm.BufferPool[ts.schemaName][tName].DirtyPageList
 		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
 			p := e.Value.(recordm.Page)
 			if p.PageNum == ts.pageCursor {
-				page = p
+				page = &p
 				break
 			}
 		}
 	}
 
 	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
-	if (page == recordm.Page{}) {
-		p := GetPage(tName, ts.pageCursor)
-		if p != nil {
-			page = *p
-			//放入buffer_pool
-			pageList.PushFront(*p)
-		} else {
-			return nil
+	if page == nil {
+		//从文件中获取page
+		fileHandler, err := filem.OpenDataFile(ts.schemaName, ts.tableName)
+		if err != nil {
+			log.Fatal(err)
 		}
+		bytes, err := fileHandler.GetPageData(pageNum)
+		fileHandler.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		page = new(recordm.Page)
+		page.UnMarshal(bytes, pageNum, ts.schemaName, ts.tableName)
+
+		//放入buffer_pool
+		pageList.PushBack(*page)
+
 	}
 
-	//从page中获取tuple
-	tupleList := page.TupleList
-	for e := tupleList.Front(); e != nil; e = e.Next() {
-		tuple := e.Value.(recordm.Tuple)
-		if ts.pageTupleCursor == tuple.TupleNum {
-			return &tuple
-		}
-	}
-
-	return nil
-}
-
-func GetPage(name recordm.TableName, pageNum int) *recordm.Page {
-	return nil
+	return *page
 }
 
 type project struct {

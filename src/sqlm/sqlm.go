@@ -120,7 +120,7 @@ func transToLocalPlan(selectStmt *sqlparser.Select) logicalPlan {
 	root.selectedCols = columns
 
 	//构建tableScan op
-	op1 := tableScan{tableName, 0, 0}
+	op1 := tableScan{global.DefaultSchemaName, tableName, 1, 0}
 
 	//组装op链
 	root.child = &op1

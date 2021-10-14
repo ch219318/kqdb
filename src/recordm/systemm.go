@@ -88,8 +88,9 @@ func listDir(dirPth string) (dirNames []string, err error) {
 
 //定义列结构体
 type Table struct {
-	Name    string   //表名
-	Columns []Column //列切片
+	Name      string   //表名
+	Columns   []Column //列切片
+	PageTotal int      //page数量
 }
 
 //定义表结构体
@@ -132,6 +133,7 @@ func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 
 	genTable := new(Table)
 	genTable.Name = tableName
+	genTable.PageTotal = filem.DATA_FILE_INIT_SIZE / filem.PageSize
 
 	astCols := stmt.TableSpec.Columns
 	colNumber := len(astCols) //列数量
@@ -228,6 +230,8 @@ func GenFileForTable(table *Table) error {
 	if err2 != nil {
 		return err2
 	}
+
+	//todo buffer_pool添加
 
 	return nil
 }
