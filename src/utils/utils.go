@@ -2,7 +2,12 @@ package utils
 
 import (
 	"encoding/binary"
+	"kqdb/src/global"
 )
+
+func init() {
+	global.InitLog()
+}
 
 func Int32ToBytes(i int32) []byte {
 	bytes := make([]byte, 4)

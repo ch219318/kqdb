@@ -2,6 +2,7 @@ package global
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -24,4 +25,13 @@ func initHomeDir() string {
 	dir := filepath.Dir(filepath.Dir(path))
 	fmt.Println("homeDir:", dir)
 	return dir
+}
+
+func InitLog() {
+	log.SetPrefix("TRACE: ")
+	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
+}
+
+func init() {
+	InitLog()
 }

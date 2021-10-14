@@ -9,6 +9,10 @@ import (
 )
 
 //文件管理模块
+func init() {
+	global.InitLog()
+}
+
 const (
 	SIZE_B                         int = 1
 	SIZE_K                             = 1024 * SIZE_B
@@ -76,12 +80,13 @@ func OpenDataFile(schemaName string, tableName string) (fileHandle *FileHandler,
 	} else {
 		return
 	}
-	log.Printf("fileHandle指针地址%p\n", fileHandle)
+	log.Printf("打开文件：%s/%s\n", fileHandle.Path, fileHandle.FileName)
 	return
 }
 
 func (fh *FileHandler) Close() error {
 	err := fh.File.Close()
+	log.Printf("关闭文件：%s/%s\n", fh.Path, fh.FileName)
 	return err
 }
 

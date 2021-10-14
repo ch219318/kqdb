@@ -4,10 +4,15 @@ import (
 	"bufio"
 	"flag"
 	"io"
+	"kqdb/src/global"
 	"kqdb/src/sqlm"
 	"log"
 	"net"
 )
+
+func init() {
+	global.InitLog()
+}
 
 var port = flag.String("p", "33455", "help message for flagname")
 

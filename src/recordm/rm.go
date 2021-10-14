@@ -12,6 +12,10 @@ import (
 
 //纪录管理模块
 
+func init() {
+	global.InitLog()
+}
+
 type rawTuple struct {
 	len        int     //行的长度
 	nullBitMap [2]byte //空值位图

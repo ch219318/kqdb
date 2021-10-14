@@ -9,6 +9,10 @@ import (
 	"log"
 )
 
+func init() {
+	global.InitLog()
+}
+
 type logicalPlan struct {
 	root relationAlgebraOp
 }
