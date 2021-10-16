@@ -47,7 +47,7 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 	//获取所有schema
 	dirNames, err := ListDir(global.DataDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	for _, dirName := range dirNames {
 		schemaName := dirName
@@ -55,7 +55,7 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 		dirPath := filepath.Join(global.DataDir, dirName)
 		fileNames, err := ListFile(dirPath, FrameFileSuf)
 		if err != nil {
-			log.Fatal(err)
+			log.Panic(err)
 		}
 
 		fileMap := make(map[string][2]*FileHandler)
@@ -64,11 +64,11 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 
 			frameFileHandler, err := openFile(FileTypeFrame, schemaName, tableName)
 			if err != nil {
-				log.Fatal(err)
+				log.Panic(err)
 			}
 			dataFileHandler, err := openFile(FileTypeData, schemaName, tableName)
 			if err != nil {
-				log.Fatal(err)
+				log.Panic(err)
 			}
 			fileMap[tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
 		}
@@ -166,7 +166,7 @@ func openFile(fileType FileType, schemaName string, tableName string) (fileHandl
 	case FileTypeFrame:
 		suf = FrameFileSuf
 	default:
-		log.Fatalln("不支持的文件类型:", fileType)
+		log.Panicln("不支持的文件类型:", fileType)
 	}
 
 	address := filepath.Join(global.DataDir, schemaName, tableName+"."+suf)
@@ -178,7 +178,7 @@ func openFile(fileType FileType, schemaName string, tableName string) (fileHandl
 		fileHandle.fileType = fileType
 		fileHandle.File = datafile
 	} else {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	log.Printf("打开文件：%s/%s.%s\n", fileHandle.Path, fileHandle.FileName, suf)
 	return
@@ -193,7 +193,7 @@ func (fh *FileHandler) Close() error {
 	case FileTypeFrame:
 		suf = FrameFileSuf
 	default:
-		log.Fatalln("不支持的文件类型:", fh.fileType)
+		log.Panicln("不支持的文件类型:", fh.fileType)
 	}
 	log.Printf("关闭文件：%s/%s.%s\n", fh.Path, fh.FileName, suf)
 	return err

@@ -13,7 +13,6 @@ import (
 
 	// "time"
 	"encoding/json"
-	"fmt"
 	"os"
 )
 
@@ -28,13 +27,13 @@ func initSchemaMap() map[string]map[string]*Table {
 	//获取所有schema
 	dirNames, err := filem.ListDir(global.DataDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	for _, dirName := range dirNames {
 		dirPath := filepath.Join(global.DataDir, dirName)
 		fileNames, err := filem.ListFile(dirPath, filem.FrameFileSuf)
 		if err != nil {
-			log.Fatal(err)
+			log.Panic(err)
 		}
 		tableMap := make(map[string]*Table)
 		for _, fileName := range fileNames {
@@ -76,15 +75,6 @@ const (
 	TypeString
 	TypeDate
 )
-
-//定义语法错误结构体
-type grammerError struct {
-	msg string
-}
-
-func (ge grammerError) Error() string {
-	return fmt.Sprintf("语法错误--%s", ge.msg)
-}
 
 //根据ddl语句生成表结构体
 func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
@@ -148,7 +138,7 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	case sqltypes.VarChar:
 		col.DataType = TypeString
 	default:
-		return *col, grammerError{"不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()}
+		return *col, &global.SqlError{"不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()}
 	}
 
 	switch astColType.NotNull {
@@ -157,7 +147,7 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	case sqlparser.BoolVal(false):
 		col.IsNull = true
 	default:
-		return *col, grammerError{"字段" + col.Name + "格式有误"}
+		return *col, &global.SqlError{"字段" + col.Name + "格式有误"}
 	}
 
 	//todo
@@ -204,12 +194,12 @@ func GenFileForTable(table *Table) error {
 func genTableFromFile(filePath string) *Table {
 	bytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	var table *Table = new(Table)
 	err1 := json.Unmarshal(bytes, table)
 	if err1 != nil {
-		log.Fatal(err1)
+		log.Panic(err1)
 	}
 	return table
 }

@@ -2,7 +2,6 @@ package sqlm
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/xwb1989/sqlparser"
 	"kqdb/src/global"
 	"kqdb/src/recordm"
@@ -23,6 +22,19 @@ type physicalPlan struct {
 
 //执行sql
 func HandSql(sql string) (result string) {
+	defer func() {
+		if pa := recover(); pa != nil {
+			//只处理SqlError
+			if sqlError, ok := pa.(*global.SqlError); ok {
+				errMsg := sqlError.Error()
+				log.Println(errMsg)
+				result = errMsg
+			} else {
+				panic(pa)
+			}
+		}
+	}()
+
 	log.Printf("sql：%s\n", sql)
 
 	result = "ok"
@@ -43,12 +55,6 @@ func HandSql(sql string) (result string) {
 	default:
 		result = "暂不支持当前类型sql:" + sql
 	}
-
-	defer func() {
-		if err := recover(); err != nil {
-			result = "程序发生严重错误" + fmt.Sprintf("%v", err)
-		}
-	}()
 
 	log.Printf("result的值为%v\n", result)
 	return

@@ -85,7 +85,7 @@ func (ts *tableScan) getPage(pageNum int) recordm.Page {
 		fileHandler := filem.FilesMap[ts.schemaName][ts.tableName][1]
 		bytes, err := fileHandler.GetPageData(pageNum)
 		if err != nil {
-			log.Fatal(err)
+			log.Panic(err)
 		}
 		page = new(recordm.Page)
 		page.UnMarshal(bytes, pageNum, ts.schemaName, ts.tableName)

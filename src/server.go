@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"io"
 	"kqdb/src/global"
 	"kqdb/src/sqlm"
 	"log"
 	"net"
+	"runtime/debug"
 )
 
 func init() {
@@ -27,7 +29,7 @@ func main() {
 	var address = ":" + *port
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	log.Printf("服务端启动成功，监听端口为：%s\n", *port)
 
@@ -51,8 +53,16 @@ func initCfg() {
 
 //处理连接
 func handleConn(conn net.Conn) {
-	log.Printf("开始处理连接：%v\n", conn)
+	connId := fmt.Sprintf("%v", conn)
+	log.Println("开始处理连接：", connId)
+
 	defer conn.Close()
+	defer func() {
+		if panic := recover(); panic != nil {
+			log.Println("程序发生严重错误:" + fmt.Sprintf("%v", panic))
+			debug.PrintStack()
+		}
+	}()
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -83,5 +93,5 @@ func handleConn(conn net.Conn) {
 		writer.Flush()
 	}
 
-	log.Printf("连接结束：%v\n", conn)
+	log.Println("连接结束：", connId)
 }

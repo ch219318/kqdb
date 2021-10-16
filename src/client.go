@@ -18,7 +18,7 @@ func main() {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Panic(err.Error())
 	}
 	defer conn.Close()
 	log.Printf("客户端端启动成功，连接为：%v\n", conn)
@@ -43,7 +43,7 @@ func sendRequest(msg string, conn net.Conn) {
 
 	_, wErr := writer.WriteString(msg)
 	if wErr != nil {
-		log.Fatal(wErr.Error())
+		log.Panic(wErr.Error())
 	}
 	writer.Flush()
 	//log.Printf("写入字节数:%v\n", num)
@@ -57,7 +57,7 @@ func handResponse(conn net.Conn) {
 
 	response, rErr := reader.ReadString('\n')
 	if rErr != nil {
-		log.Fatal(rErr.Error())
+		log.Panic(rErr.Error())
 	}
 
 	log.Printf("<< %s\n", response)

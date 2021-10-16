@@ -45,7 +45,7 @@ func (tuple *Tuple) Marshal() []byte {
 			case TypeInt:
 				colValInt, err := strconv.ParseInt(colVal, 10, 32)
 				if err != nil {
-					log.Fatal(err)
+					log.Panic(err)
 				}
 				colValBytes = utils.Int32ToBytes(int32(colValInt))
 			case TypeString:
@@ -54,7 +54,7 @@ func (tuple *Tuple) Marshal() []byte {
 				binary.BigEndian.PutUint16(lenBytes, uint16(len(colValBytes)))
 				colValBytes = append(lenBytes, colValBytes...)
 			default:
-				log.Fatal("不支持的类型")
+				log.Panic("不支持的类型")
 			}
 			data = append(data, colValBytes...)
 		} else {
@@ -103,7 +103,7 @@ func (tuple *Tuple) UnMarshal(bytes []byte, tupleNum int, schemaName string, tab
 				//去掉data中已使用部分
 				data = data[2+len:]
 			default:
-				log.Fatal("不支持的类型")
+				log.Panic("不支持的类型")
 			}
 			//把列值加入content
 			content[v.Name] = colVal
@@ -162,7 +162,7 @@ func (page *Page) Marshal() []byte {
 //page反序列化
 func (page *Page) UnMarshal(bytes []byte, pageNum int, schemaName string, tableName string) {
 	if len(bytes) != filem.PageSize {
-		log.Fatal("page size大小出错：" + string(len(bytes)))
+		log.Panic("page size大小出错：" + string(len(bytes)))
 	}
 
 	page.PageNum = pageNum
