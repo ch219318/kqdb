@@ -10,3 +10,7 @@ type SqlError struct {
 func (error *SqlError) Error() string {
 	return fmt.Sprintf("sql错误：%s", error.Msg)
 }
+
+func NewSqlError(msg string) *SqlError {
+	return &SqlError{msg}
+}

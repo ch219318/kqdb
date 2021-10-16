@@ -3,7 +3,6 @@ package recordm
 import (
 	"container/list"
 	"kqdb/src/filem"
-	"log"
 )
 
 type BufferTable struct {
@@ -29,10 +28,7 @@ func initBufferPool() map[string]map[TableName]*BufferTable {
 			//加入一定数量page
 			fileHandler := filem.FilesMap[schemaName][tableName][1]
 			for i := 1; i < 10; i++ {
-				bytes, err := fileHandler.GetPageData(i)
-				if err != nil {
-					log.Panic(err)
-				}
+				bytes := fileHandler.GetPageData(i)
 				page := new(Page)
 				page.UnMarshal(bytes, i, schemaName, tableName)
 				pageList.PushBack(*page)

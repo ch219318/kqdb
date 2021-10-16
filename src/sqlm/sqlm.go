@@ -6,6 +6,7 @@ import (
 	"kqdb/src/global"
 	"kqdb/src/recordm"
 	"log"
+	"runtime/debug"
 )
 
 func init() {
@@ -24,12 +25,14 @@ type physicalPlan struct {
 func HandSql(sql string) (result string) {
 	defer func() {
 		if pa := recover(); pa != nil {
-			//只处理SqlError
+			//全局处理SqlError
 			if sqlError, ok := pa.(*global.SqlError); ok {
+				debug.PrintStack()
 				errMsg := sqlError.Error()
 				log.Println(errMsg)
 				result = errMsg
 			} else {
+				//再次抛出其他panic
 				panic(pa)
 			}
 		}
@@ -63,14 +66,8 @@ func HandSql(sql string) (result string) {
 func handDdl(ddlStmt *sqlparser.DDL) string {
 	switch ddlStmt.Action {
 	case sqlparser.CreateStr:
-		table, err := recordm.GenTableByDdl(ddlStmt)
-		if err != nil {
-			return err.Error()
-		}
-		err1 := recordm.GenFileForTable(table)
-		if err1 != nil {
-			return err1.Error()
-		}
+		table := recordm.GenTableByDdl(ddlStmt)
+		recordm.GenFileForTable(table)
 	case sqlparser.AlterStr:
 	case sqlparser.DropStr:
 	default:

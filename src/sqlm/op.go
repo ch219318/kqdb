@@ -3,7 +3,6 @@ package sqlm
 import (
 	"kqdb/src/filem"
 	"kqdb/src/recordm"
-	"log"
 )
 
 type relationAlgebraOp interface {
@@ -83,10 +82,7 @@ func (ts *tableScan) getPage(pageNum int) recordm.Page {
 	if page == nil {
 		//从文件中获取page
 		fileHandler := filem.FilesMap[ts.schemaName][ts.tableName][1]
-		bytes, err := fileHandler.GetPageData(pageNum)
-		if err != nil {
-			log.Panic(err)
-		}
+		bytes := fileHandler.GetPageData(pageNum)
 		page = new(recordm.Page)
 		page.UnMarshal(bytes, pageNum, ts.schemaName, ts.tableName)
 

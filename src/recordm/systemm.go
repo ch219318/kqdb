@@ -1,7 +1,6 @@
 package recordm
 
 import (
-	"errors"
 	"github.com/xwb1989/sqlparser"
 	"github.com/xwb1989/sqlparser/dependency/sqltypes"
 	"io/ioutil"
@@ -25,16 +24,12 @@ func initSchemaMap() map[string]map[string]*Table {
 	schemaMap := make(map[string]map[string]*Table)
 
 	//获取所有schema
-	dirNames, err := filem.ListDir(global.DataDir)
-	if err != nil {
-		log.Panic(err)
-	}
+	dirNames := filem.ListDir(global.DataDir)
+
 	for _, dirName := range dirNames {
 		dirPath := filepath.Join(global.DataDir, dirName)
-		fileNames, err := filem.ListFile(dirPath, filem.FrameFileSuf)
-		if err != nil {
-			log.Panic(err)
-		}
+		fileNames := filem.ListFile(dirPath, filem.FrameFileSuf)
+
 		tableMap := make(map[string]*Table)
 		for _, fileName := range fileNames {
 			filePath := filepath.Join(dirPath, fileName)
@@ -77,12 +72,12 @@ const (
 )
 
 //根据ddl语句生成表结构体
-func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
+func GenTableByDdl(stmt *sqlparser.DDL) *Table {
 	tableName := stmt.NewName.Name.String()
 
 	isExist := TableIsExist(tableName)
 	if isExist {
-		return nil, errors.New(global.DefaultSchemaName + "." + tableName + "表已存在")
+		panic(global.NewSqlError(global.DefaultSchemaName + "." + tableName + "表已存在"))
 	}
 
 	genTable := new(Table)
@@ -94,10 +89,7 @@ func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 	columns := make([]Column, colNumber)
 	for i := 0; i < colNumber; i++ {
 		astCol := astCols[i]
-		col, err := genColumn(astCol)
-		if err != nil {
-			return genTable, err
-		}
+		col := genColumn(astCol)
 		columns[i] = col
 	}
 	//log.Println(columns)
@@ -107,7 +99,7 @@ func GenTableByDdl(stmt *sqlparser.DDL) (*Table, error) {
 	SchemaMap[global.DefaultSchemaName][tableName] = genTable
 	BufferPool[global.DefaultSchemaName][TableName(tableName)] = new(BufferTable)
 
-	return genTable, nil
+	return genTable
 }
 
 //判断表是否已存在
@@ -125,7 +117,7 @@ func GetTable(tableName string) *Table {
 }
 
 //根据ddl生成column
-func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
+func genColumn(astColDef *sqlparser.ColumnDefinition) Column {
 	col := new(Column)
 	astColName := astColDef.Name
 	astColType := astColDef.Type
@@ -138,7 +130,7 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	case sqltypes.VarChar:
 		col.DataType = TypeString
 	default:
-		return *col, &global.SqlError{"不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()}
+		panic(global.NewSqlError("不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()))
 	}
 
 	switch astColType.NotNull {
@@ -147,7 +139,7 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	case sqlparser.BoolVal(false):
 		col.IsNull = true
 	default:
-		return *col, &global.SqlError{"字段" + col.Name + "格式有误"}
+		panic(global.NewSqlError("字段" + col.Name + "格式有误"))
 	}
 
 	//todo
@@ -156,14 +148,14 @@ func genColumn(astColDef *sqlparser.ColumnDefinition) (Column, error) {
 	col.DefaultVal = "de"
 	col.Comment = "co"
 
-	return *col, nil
+	return *col
 }
 
-func GenFileForTable(table *Table) error {
+func GenFileForTable(table *Table) {
 	//保存表结构体到frm文件
 	bytes, err := json.Marshal(table)
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
 	log.Println("json:" + string(bytes))
 
@@ -171,23 +163,19 @@ func GenFileForTable(table *Table) error {
 	file, err := os.Create(tablePath)
 	defer file.Close()
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
 
 	_, err1 := file.Write(bytes)
 	if err1 != nil {
-		return err1
+		log.Panic(err)
 	}
 
 	//初始化表data文件
-	err2 := filem.CreateDataFile(table.Name)
-	if err2 != nil {
-		return err2
-	}
+	filem.CreateDataFile(table.Name)
 
 	//todo buffer_pool添加
 
-	return nil
 }
 
 //根据frm文件生成表结构体

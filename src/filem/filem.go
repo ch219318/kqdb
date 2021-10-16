@@ -2,7 +2,6 @@ package filem
 
 import (
 	"encoding/binary"
-	"errors"
 	"io/ioutil"
 	"kqdb/src/global"
 	"log"
@@ -45,31 +44,21 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 	filesMap := make(map[string]map[string][2]*FileHandler)
 
 	//获取所有schema
-	dirNames, err := ListDir(global.DataDir)
-	if err != nil {
-		log.Panic(err)
-	}
+	dirNames := ListDir(global.DataDir)
+
 	for _, dirName := range dirNames {
 		schemaName := dirName
 
 		dirPath := filepath.Join(global.DataDir, dirName)
-		fileNames, err := ListFile(dirPath, FrameFileSuf)
-		if err != nil {
-			log.Panic(err)
-		}
+		fileNames := ListFile(dirPath, FrameFileSuf)
 
 		fileMap := make(map[string][2]*FileHandler)
 		for _, fileName := range fileNames {
 			tableName := strings.TrimSuffix(fileName, "."+FrameFileSuf)
 
-			frameFileHandler, err := openFile(FileTypeFrame, schemaName, tableName)
-			if err != nil {
-				log.Panic(err)
-			}
-			dataFileHandler, err := openFile(FileTypeData, schemaName, tableName)
-			if err != nil {
-				log.Panic(err)
-			}
+			frameFileHandler := openFile(FileTypeFrame, schemaName, tableName)
+			dataFileHandler := openFile(FileTypeData, schemaName, tableName)
+
 			fileMap[tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
 		}
 
@@ -80,11 +69,11 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 }
 
 //获取指定目录下的所有目录
-func ListDir(dirPth string) (dirNames []string, err error) {
+func ListDir(dirPth string) (dirNames []string) {
 	dirNames = make([]string, 0, 10)
 	dir, err := ioutil.ReadDir(dirPth)
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
 	for _, fi := range dir {
 		if fi.IsDir() {
@@ -97,11 +86,11 @@ func ListDir(dirPth string) (dirNames []string, err error) {
 }
 
 //获取指定目录下的所有文件，不进入下一级目录搜索，可以匹配后缀过滤。
-func ListFile(dirPth string, suffix string) (fileNames []string, err error) {
+func ListFile(dirPth string, suffix string) (fileNames []string) {
 	fileNames = make([]string, 0, 10)
 	dir, err := ioutil.ReadDir(dirPth)
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
 	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
 	for _, fi := range dir {
@@ -126,15 +115,14 @@ type PageHandler struct {
 	PageNodeId int //
 }
 
-func CreateDataFile(fileName string) error {
+func CreateDataFile(fileName string) {
 	log.Printf("开始创建数据文件:%s.%s\n", fileName, DataFileSuf)
 
 	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName+"."+DataFileSuf)
 	file, err := os.Create(dataPath)
 	defer file.Close()
 	if err != nil {
-		log.Printf("创建数据文件:%s.%s失败\n", fileName, DataFileSuf)
-		return err
+		log.Panicln("创建数据文件:%s.%s失败\n", fileName, DataFileSuf)
 	}
 
 	//文件头page
@@ -155,10 +143,9 @@ func CreateDataFile(fileName string) error {
 	}
 
 	log.Printf("创建数据文件:%s.%s成功\n", fileName, DataFileSuf)
-	return nil
 }
 
-func openFile(fileType FileType, schemaName string, tableName string) (fileHandle *FileHandler, err error) {
+func openFile(fileType FileType, schemaName string, tableName string) (fileHandle *FileHandler) {
 	suf := ""
 	switch fileType {
 	case FileTypeData:
@@ -199,18 +186,19 @@ func (fh *FileHandler) Close() error {
 	return err
 }
 
-func (fh *FileHandler) GetPageData(pageNum int) ([]byte, error) {
+func (fh *FileHandler) GetPageData(pageNum int) []byte {
 	if fh.fileType == FileTypeData {
 		bytes := make([]byte, PageSize)
 		offset := pageNum * PageSize
 		_, err := fh.File.ReadAt(bytes, int64(offset))
 		if err != nil {
-			return nil, err
+			log.Panic(err)
 		}
-		return bytes, nil
+		return bytes
 	} else {
-		return nil, errors.New("文件类型错误")
+		log.Panic("不是数据文件")
 	}
+	return nil
 }
 
 //==============
