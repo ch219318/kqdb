@@ -50,6 +50,8 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 		log.Fatal(err)
 	}
 	for _, dirName := range dirNames {
+		schemaName := dirName
+
 		dirPath := filepath.Join(global.DataDir, dirName)
 		fileNames, err := ListFile(dirPath, FrameFileSuf)
 		if err != nil {
@@ -58,19 +60,19 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 
 		fileMap := make(map[string][2]*FileHandler)
 		for _, fileName := range fileNames {
-			frameFileHander, err := openFile(FileTypeFrame, dirName, fileName)
+			tableName := strings.TrimSuffix(fileName, "."+FrameFileSuf)
+
+			frameFileHandler, err := openFile(FileTypeFrame, schemaName, tableName)
 			if err != nil {
 				log.Fatal(err)
 			}
-			dataFileHander, err := openFile(FileTypeData, dirName, fileName)
+			dataFileHandler, err := openFile(FileTypeData, schemaName, tableName)
 			if err != nil {
 				log.Fatal(err)
 			}
-			tableName := fileName
-			fileMap[tableName] = [2]*FileHandler{frameFileHander, dataFileHander}
+			fileMap[tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
 		}
 
-		schemaName := dirName
 		filesMap[schemaName] = fileMap
 	}
 
