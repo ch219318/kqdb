@@ -5,11 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"kqdb/src/filem"
 	"kqdb/src/global"
 	"kqdb/src/sqlm"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 )
 
 func init() {
@@ -33,14 +37,27 @@ func main() {
 	}
 	log.Printf("服务端启动成功，监听端口为：%s\n", *port)
 
+	//监听关闭信号
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGUSR1, syscall.SIGUSR2)
+	go func() {
+		<-ch
+		log.Println("Get Stop Command. Now Stoping...")
+		if err = ln.Close(); err != nil {
+			log.Println(err)
+		}
+		filem.CloseFilesMap()
+	}()
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Println(err)
-			continue
+			break
+		} else {
+			log.Printf("Accepted connection to %v from %v", conn.LocalAddr(), conn.RemoteAddr())
+			go handleConn(conn)
 		}
-		log.Printf("Accepted connection to %v from %v", conn.LocalAddr(), conn.RemoteAddr())
-		go handleConn(conn)
 	}
 }
 

@@ -111,6 +111,12 @@ func transToLocalPlan(selectStmt *sqlparser.Select) logicalPlan {
 	tableName := ([]sqlparser.TableExpr)(selectStmt.From)[0].(*sqlparser.AliasedTableExpr).
 		Expr.(sqlparser.TableName).Name.String()
 
+	//判断表是否存在
+	isExist := recordm.TableIsExist(tableName)
+	if !isExist {
+		panic(global.NewSqlError(global.DefaultSchemaName + "." + tableName + "表不存在"))
+	}
+
 	//构建select op
 	columns := make([]recordm.Column, 0)
 	for _, v := range selectStmt.SelectExprs {

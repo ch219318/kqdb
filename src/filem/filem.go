@@ -68,6 +68,17 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 	return filesMap
 }
 
+func CloseFilesMap() {
+	for schemaName := range FilesMap {
+		fileMap := FilesMap[schemaName]
+		for tableName := range fileMap {
+			files := fileMap[tableName]
+			files[0].Close()
+			files[1].Close()
+		}
+	}
+}
+
 //获取指定目录下的所有目录
 func ListDir(dirPth string) (dirNames []string) {
 	dirNames = make([]string, 0, 10)
