@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//文件管理模块
+//文件管理模块 fileName带后缀
 func init() {
 	global.InitLog()
 }
@@ -56,8 +56,8 @@ func initFilesMap() map[string]map[string][2]*FileHandler {
 		for _, fileName := range fileNames {
 			tableName := strings.TrimSuffix(fileName, "."+FrameFileSuf)
 
-			frameFileHandler := openFile(FileTypeFrame, schemaName, tableName)
-			dataFileHandler := openFile(FileTypeData, schemaName, tableName)
+			frameFileHandler := OpenFile(FileTypeFrame, schemaName, tableName)
+			dataFileHandler := OpenFile(FileTypeData, schemaName, tableName)
 
 			fileMap[tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
 		}
@@ -115,14 +115,14 @@ type PageHandler struct {
 	PageNodeId int //
 }
 
-func CreateDataFile(fileName string) {
-	log.Printf("开始创建数据文件:%s.%s\n", fileName, DataFileSuf)
+func CreateDataFile(tableName string) {
+	log.Printf("开始创建数据文件:%s.%s\n", tableName, DataFileSuf)
 
-	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, fileName+"."+DataFileSuf)
+	dataPath := filepath.Join(global.DataDir, global.DefaultSchemaName, tableName+"."+DataFileSuf)
 	file, err := os.Create(dataPath)
 	defer file.Close()
 	if err != nil {
-		log.Panicln("创建数据文件:%s.%s失败\n", fileName, DataFileSuf)
+		log.Panicln("创建数据文件:%s.%s失败\n", tableName, DataFileSuf)
 	}
 
 	//文件头page
@@ -142,10 +142,10 @@ func CreateDataFile(fileName string) {
 		file.Write(pageBuf)
 	}
 
-	log.Printf("创建数据文件:%s.%s成功\n", fileName, DataFileSuf)
+	log.Printf("创建数据文件:%s.%s成功\n", tableName, DataFileSuf)
 }
 
-func openFile(fileType FileType, schemaName string, tableName string) (fileHandle *FileHandler) {
+func OpenFile(fileType FileType, schemaName string, tableName string) (fileHandle *FileHandler) {
 	suf := ""
 	switch fileType {
 	case FileTypeData:

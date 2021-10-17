@@ -1,6 +1,7 @@
 package recordm
 
 import (
+	"container/list"
 	"github.com/xwb1989/sqlparser"
 	"github.com/xwb1989/sqlparser/dependency/sqltypes"
 	"io/ioutil"
@@ -95,9 +96,8 @@ func GenTableByDdl(stmt *sqlparser.DDL) *Table {
 	//log.Println(columns)
 	genTable.Columns = columns
 
-	//添加至SchemaMap和BufferPool
+	//添加至SchemaMap
 	SchemaMap[global.DefaultSchemaName][tableName] = genTable
-	BufferPool[global.DefaultSchemaName][TableName(tableName)] = new(BufferTable)
 
 	return genTable
 }
@@ -174,7 +174,23 @@ func GenFileForTable(table *Table) {
 	//初始化表data文件
 	filem.CreateDataFile(table.Name)
 
-	//todo buffer_pool添加
+	//FilesMap处理
+	schemaName := global.DefaultSchemaName
+	tableName := table.Name
+	frameFileHandler := filem.OpenFile(filem.FileTypeFrame, schemaName, tableName)
+	dataFileHandler := filem.OpenFile(filem.FileTypeData, schemaName, tableName)
+	filem.FilesMap[schemaName][tableName] = [2]*filem.FileHandler{frameFileHandler, dataFileHandler}
+
+	//buffer_pool处理
+	pageList := list.New()
+	for i := 1; i < 10; i++ {
+		bytes := dataFileHandler.GetPageData(i)
+		page := new(Page)
+		page.UnMarshal(bytes, i, schemaName, tableName)
+		pageList.PushBack(*page)
+	}
+	bufferTable := BufferTable{pageList, list.New()}
+	BufferPool[global.DefaultSchemaName][TableName(tableName)] = &bufferTable
 
 }
 
