@@ -37,6 +37,8 @@ const (
 	FileTypeFrame
 )
 
+//===========================
+
 var FilesMap = initFilesMap()
 
 //key为schema和table。0位置为frm文件，1位置为data文件
@@ -114,6 +116,8 @@ func ListFile(dirPth string, suffix string) (fileNames []string) {
 	}
 	return
 }
+
+//===========================
 
 type FileHandler struct {
 	fileType FileType
@@ -210,94 +214,4 @@ func (fh *FileHandler) GetPageData(pageNum int) []byte {
 		log.Panic("不是数据文件")
 	}
 	return nil
-}
-
-//==============
-
-func (fh *FileHandler) AddData(bytes []byte) (err error) {
-	length := len(bytes)
-	file := fh.File
-	//获取文件头元信息
-	mi := fh.GetMetaInfo()
-
-	if length <= PageSize {
-		//添加数据部分
-		content := make([]byte, PageSize)
-		copy(content, bytes)
-		// // 查找文件末尾的偏移量
-		// off, _ := file.Seek(0, os.SEEK_END)
-		// // 从末尾的偏移量开始写入内容
-		// n, err2 := file.WriteAt(content, off)
-		off := (mi.CurPageId - 1) * PageSize
-		n, err1 := file.WriteAt(content, int64(off))
-		if err1 != nil {
-			return err1
-		}
-		log.Printf("添加数据成功%d:%v", n, err1)
-		//更新文件头信息
-		node := make([]byte, 8)
-		pageIdOfNode := make([]byte, 4)
-		binary.BigEndian.PutUint32(pageIdOfNode, uint32(mi.CurPageId))
-		seqIdOfNode := make([]byte, 4)
-		binary.BigEndian.PutUint32(seqIdOfNode, uint32(mi.CurSeqId))
-		copy(node, pageIdOfNode)
-		node[4] = seqIdOfNode[1]
-		node[5] = seqIdOfNode[2]
-		node[6] = seqIdOfNode[3]
-		node[7] = 0x02 //00000010，倒数第一位表示数据还是地址，第二位表示node是否有效
-		offset := PageSize + (mi.CurSeqId-1)*NODE_SIZE
-		file.WriteAt(node, int64(offset))
-		//更新文件头元信息
-		mi.CurPageId = mi.CurPageId + 1
-		mi.CurSeqId = mi.CurSeqId + 1
-		err2 := fh.SaveMetaInfo(mi)
-		if err2 != nil {
-			return err2
-		}
-	} else {
-
-	}
-	return err
-}
-
-//func (fh *FileHandler) GetData() (bytes []byte, err error) {
-//}
-
-type MetaInfo struct {
-	CurPageId     int //下一个待分配page的id，以2049开始，初始值为2049
-	CurSeqId      int //下一个待分配序列id，以1开始，初始值为1
-	CurNodePageId int //最末尾node信息所在pageid，以2开始，初始值为2
-}
-
-//获取文件头中node表元信息
-func (fh *FileHandler) GetMetaInfo() (mi MetaInfo) {
-	file := fh.File
-	content := make([]byte, DATA_FILE_HEADER_METAINFO_SIZE)
-	n, err2 := file.Read(content)
-	log.Printf("获取数据成功%d:%v\n", n, err2)
-	mi.CurPageId = int(binary.BigEndian.Uint32(content[0:4]))
-	mi.CurSeqId = int(binary.BigEndian.Uint32(content[4:8]))
-	mi.CurNodePageId = int(binary.BigEndian.Uint32(content[8:12]))
-	log.Printf("mi:%v\n", mi)
-	return mi
-}
-
-//保存文件头中node表元信息
-func (fh *FileHandler) SaveMetaInfo(mi MetaInfo) (err error) {
-	file := fh.File
-	CurPageIdBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(CurPageIdBytes, uint32(mi.CurPageId))
-	CurSeqIdBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(CurSeqIdBytes, uint32(mi.CurSeqId))
-	CurNodePageId := make([]byte, 4)
-	binary.BigEndian.PutUint32(CurNodePageId, uint32(mi.CurNodePageId))
-	//slice1的长度为12，写入成功为8，而且err1为nil，找不出原因
-	// slice := append(CurPageIdBytes, CurSeqIdBytes...)
-	// slice1 := append(slice, CurNodePageId...)
-	// log.Println(len(slice1))
-	// n, err1 := file.WriteAt(slice, 10)
-	file.WriteAt(CurPageIdBytes, 0)
-	file.WriteAt(CurSeqIdBytes, 4)
-	file.WriteAt(CurNodePageId, 8)
-	return err
 }
