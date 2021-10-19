@@ -22,34 +22,30 @@ func initTicker() *time.Ticker {
 
 //处理dirty链
 func flushDirtyList() {
-	for schemaName := range bufferPool {
-		tablePool := bufferPool[schemaName]
-		for tableName := range tablePool {
-			bufferTable := tablePool[tableName]
-			dirtyPageList := bufferTable.DirtyPageList
-			if dirtyPageList.Len() > 0 {
+	for fileP := range bufferPool {
+		bufferTable := bufferPool[fileP]
+		dirtyPageList := bufferTable.DirtyPageList
+		if dirtyPageList.Len() > 0 {
 
-				log.Println("flushDirtyList:" + schemaName + "." + string(tableName))
+			log.Println("flushDirtyList:", fileP)
 
-				file := GetFile(FileTypeData, schemaName, string(tableName)).File
-				for e := dirtyPageList.Front(); e != nil; e = e.Next() {
-					dirtyPage := e.Value.(*Page)
-					log.Print(*dirtyPage)
+			file := GetFile(fileP).File
+			for e := dirtyPageList.Front(); e != nil; e = e.Next() {
+				dirtyPage := e.Value.(*Page)
+				log.Print(*dirtyPage)
 
-					//dirtyPage转bytes
-					bytes := dirtyPage.Marshal()
-					offset := dirtyPage.PageNum * PageSize
-					n, err := file.WriteAt(bytes, int64(offset))
-					if err != nil {
-						log.Println(n)
-						log.Println(err)
-					}
+				//dirtyPage转bytes
+				bytes := dirtyPage.Marshal()
+				offset := dirtyPage.PageNum * PageSize
+				n, err := file.WriteAt(bytes, int64(offset))
+				if err != nil {
+					log.Println(n)
+					log.Println(err)
 				}
-
-				//dirty链清零
-				bufferTable.DirtyPageList = list.New()
-
 			}
+
+			//dirty链清零
+			bufferTable.DirtyPageList = list.New()
 
 		}
 	}

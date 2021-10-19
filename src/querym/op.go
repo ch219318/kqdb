@@ -2,8 +2,10 @@ package querym
 
 import (
 	"kqdb/src/filem"
+	"kqdb/src/global"
 	"kqdb/src/recordm"
 	"kqdb/src/systemm"
+	"path/filepath"
 )
 
 type relationAlgebraOp interface {
@@ -22,7 +24,8 @@ type tableScan struct {
 
 func (ts *tableScan) getNextTuple() *recordm.Tuple {
 	//从cursor处遍历page
-	fileHandler := filem.GetFile(filem.FileTypeData, ts.schemaName, ts.tableName)
+	fileP := filepath.Join(global.DataDir, ts.schemaName, ts.tableName+"."+filem.DataFileSuf)
+	fileHandler := filem.GetFile(fileP)
 	for ts.pageCursor < fileHandler.TotalPage {
 		page := fileHandler.GetPage(ts.pageCursor)
 		items := page.Items
@@ -35,11 +38,9 @@ func (ts *tableScan) getNextTuple() *recordm.Tuple {
 			if tupleBytes != nil {
 				result := new(recordm.Tuple)
 				result.UnMarshal(tupleBytes, ts.pageTupleCursor, ts.schemaName, ts.tableName)
+				ts.pageTupleCursor++ //不能删除
 				return result
-			} else {
-				continue
 			}
-
 			ts.pageTupleCursor++
 		}
 

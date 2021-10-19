@@ -1,7 +1,6 @@
 package filem
 
 import (
-	"container/list"
 	"encoding/binary"
 	"io/ioutil"
 	"kqdb/src/global"
@@ -37,45 +36,40 @@ const (
 
 //===========================
 
+//key为filePath
 var filesMap = initFilesMap()
 
-//key为schema和table。0位置为frm文件，1位置为data文件
-func initFilesMap() map[string]map[string][2]*FileHandler {
-	filesMap := make(map[string]map[string][2]*FileHandler)
+func initFilesMap() map[string]*FileHandler {
+	filesMap := make(map[string]*FileHandler)
 
 	//获取所有schema
 	dirNames := ListDir(global.DataDir)
-
 	for _, dirName := range dirNames {
-		schemaName := dirName
 
 		dirPath := filepath.Join(global.DataDir, dirName)
-		fileNames := ListFile(dirPath, FrameFileSuf)
-
-		fileMap := make(map[string][2]*FileHandler)
-		for _, fileName := range fileNames {
-			tableName := strings.TrimSuffix(fileName, "."+FrameFileSuf)
-
-			frameFileHandler := openFile(FileTypeFrame, schemaName, tableName)
-			dataFileHandler := openFile(FileTypeData, schemaName, tableName)
-
-			fileMap[tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
+		//处理frm文件
+		frmFileNames := ListFile(dirPath, FrameFileSuf)
+		for _, fileName := range frmFileNames {
+			fileP := filepath.Join(dirPath, fileName)
+			frameFileHandler := openFile(fileP)
+			filesMap[fileP] = frameFileHandler
 		}
-
-		filesMap[schemaName] = fileMap
+		//处理data文件
+		dataFileNames := ListFile(dirPath, DataFileSuf)
+		for _, fileName := range dataFileNames {
+			fileP := filepath.Join(dirPath, fileName)
+			dataFileHandler := openFile(fileP)
+			filesMap[fileP] = dataFileHandler
+		}
 	}
 
 	return filesMap
 }
 
 func CloseFilesMap() {
-	for schemaName := range filesMap {
-		fileMap := filesMap[schemaName]
-		for tableName := range fileMap {
-			files := fileMap[tableName]
-			files[0].Close()
-			files[1].Close()
-		}
+	for fileP := range filesMap {
+		fileHandler := filesMap[fileP]
+		fileHandler.Close()
 	}
 }
 
@@ -119,20 +113,18 @@ func ListFile(dirPth string, suffix string) (fileNames []string) {
 
 type FileHandler struct {
 	fileType  FileType
-	Path      string //相对于data文件夹
-	FileName  string
+	filePath  string
 	File      *os.File
 	TotalPage int
 }
 
-func CreateDataFile(schemaName string, tableName string) {
-	log.Printf("开始创建数据文件:%s.%s\n", tableName, DataFileSuf)
+func CreateDataFile(fileP string) {
+	log.Printf("开始创建数据文件:%s\n", fileP)
 
-	dataPath := filepath.Join(global.DataDir, schemaName, tableName+"."+DataFileSuf)
-	file, err := os.Create(dataPath)
+	file, err := os.Create(fileP)
 	defer file.Close()
 	if err != nil {
-		log.Panicln("创建数据文件:%s.%s失败\n", tableName, DataFileSuf)
+		log.Panicf("创建数据文件:%s 失败\n", fileP)
 	}
 
 	//文件头page
@@ -153,39 +145,25 @@ func CreateDataFile(schemaName string, tableName string) {
 	}
 
 	//FilesMap处理
-	frameFileHandler := openFile(FileTypeFrame, schemaName, tableName)
-	dataFileHandler := openFile(FileTypeData, schemaName, tableName)
-	filesMap[schemaName][tableName] = [2]*FileHandler{frameFileHandler, dataFileHandler}
+	dataFileHandler := openFile(fileP)
+	filesMap[fileP] = dataFileHandler
+	frmFileP := strings.TrimSuffix(fileP, DataFileSuf) + FrameFileSuf
+	frameFileHandler := openFile(frmFileP)
+	filesMap[frmFileP] = frameFileHandler
 
 	//buffer_pool处理
-	pageList := list.New()
-	for i := 1; i < 10; i++ {
-		page := dataFileHandler.GetPage(i)
-		pageList.PushBack(page)
-	}
-	bufferTable := bufferTable{pageList, list.New()}
-	bufferPool[schemaName][tName(tableName)] = &bufferTable
+	addFileToPool(fileP)
 
-	log.Printf("创建数据文件:%s.%s.%s成功\n", schemaName, tableName, DataFileSuf)
+	log.Printf("创建数据文件:%s成功\n", fileP)
 }
 
-func openFile(fileType FileType, schemaName string, tableName string) (fileHandler *FileHandler) {
-	suf := ""
-	switch fileType {
-	case FileTypeData:
-		suf = DataFileSuf
-	case FileTypeFrame:
-		suf = FrameFileSuf
-	default:
-		log.Panicln("不支持的文件类型:", fileType)
-	}
+func openFile(filePath string) (fileHandler *FileHandler) {
+	fileType := getFileType(filePath)
 
-	address := filepath.Join(global.DataDir, schemaName, tableName+"."+suf)
-	datafile, err := os.OpenFile(address, os.O_RDWR, os.ModePerm)
+	datafile, err := os.OpenFile(filePath, os.O_RDWR, os.ModePerm)
 	if err == nil {
 		fileHandler = new(FileHandler)
-		fileHandler.Path = schemaName
-		fileHandler.FileName = tableName
+		fileHandler.filePath = filePath
 		fileHandler.fileType = fileType
 		fileHandler.File = datafile
 
@@ -203,35 +181,35 @@ func openFile(fileType FileType, schemaName string, tableName string) (fileHandl
 	} else {
 		log.Panicln(err)
 	}
-	log.Printf("打开文件：%s/%s.%s\n", fileHandler.Path, fileHandler.FileName, suf)
+	log.Printf("打开文件：%s\n", fileHandler.filePath)
 	return
 }
 
-func GetFile(fileType FileType, schemaName string, tableName string) (fileHandler *FileHandler) {
-	switch fileType {
-	case FileTypeData:
-		fileHandler = filesMap[schemaName][string(tableName)][1]
-	case FileTypeFrame:
-		fileHandler = filesMap[schemaName][string(tableName)][0]
-	default:
-		log.Panicln("不支持的文件类型:", fileType)
+func getFileType(filePath string) FileType {
+	if strings.HasSuffix(filePath, FrameFileSuf) {
+		return FileTypeFrame
 	}
-	return
+	if strings.HasSuffix(filePath, DataFileSuf) {
+		return FileTypeData
+	}
+	log.Panicln("不支持的类型")
+	return 0
 }
 
-func (fh *FileHandler) Close() error {
+func GetFile(fileP string) *FileHandler {
+	fileHandler := filesMap[fileP]
+	if fileHandler == nil {
+		log.Panicln(fileP, "文件不存在")
+	}
+	return fileHandler
+}
+
+func (fh *FileHandler) Close() {
 	err := fh.File.Close()
-	suf := ""
-	switch fh.fileType {
-	case FileTypeData:
-		suf = DataFileSuf
-	case FileTypeFrame:
-		suf = FrameFileSuf
-	default:
-		log.Panicln("不支持的文件类型:", fh.fileType)
+	if err != nil {
+		log.Panicln(err)
 	}
-	log.Printf("关闭文件：%s/%s.%s\n", fh.Path, fh.FileName, suf)
-	return err
+	log.Printf("关闭文件：%s\n", fh.filePath)
 }
 
 //先从bufferPool获取，然后在从硬盘中取
@@ -241,9 +219,8 @@ func (fh *FileHandler) GetPage(pageNum int) *Page {
 	}
 
 	//从buffer_pool中获取page
-	tName := tName(fh.FileName)
 	var page *Page
-	pageList := bufferPool[fh.Path][tName].PageList
+	pageList := bufferPool[fh.filePath].PageList
 	for e := pageList.Front(); e != nil; e = e.Next() {
 		p := e.Value.(*Page)
 		if p.PageNum == pageNum {
@@ -254,7 +231,7 @@ func (fh *FileHandler) GetPage(pageNum int) *Page {
 
 	//如果page链上没有，从脏链上获取
 	if page == nil {
-		dirtyPageList := bufferPool[fh.Path][tName].DirtyPageList
+		dirtyPageList := bufferPool[fh.filePath].DirtyPageList
 		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
 			p := e.Value.(*Page)
 			if p.PageNum == pageNum {
@@ -287,14 +264,13 @@ func (fh *FileHandler) getPageFromDisk(pageNum int) *Page {
 		log.Panic(err)
 	}
 	page := new(Page)
-	page.UnMarshal(bytes, pageNum, fh.Path, fh.FileName)
+	page.UnMarshal(bytes, pageNum, fh.filePath)
 	return page
 }
 
 func (fh *FileHandler) MarkDirty(pageNum int) {
-	t := tName(fh.FileName)
-	dirtyPageList := bufferPool[fh.Path][t].DirtyPageList
-	pageList := bufferPool[fh.Path][t].PageList
+	dirtyPageList := bufferPool[fh.filePath].DirtyPageList
+	pageList := bufferPool[fh.filePath].PageList
 
 	var resultPage *Page = nil
 

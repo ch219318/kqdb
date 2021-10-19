@@ -3,6 +3,7 @@ package recordm
 import (
 	"kqdb/src/filem"
 	"kqdb/src/global"
+	"path/filepath"
 )
 
 //纪录管理模块
@@ -15,9 +16,10 @@ func CreateFileHandle() {
 
 }
 
-func OpenFileHandle(schemaName string, talbeName string) *RmFileHandle {
+func OpenFileHandle(schemaName string, tableName string) *RmFileHandle {
 	fileHandle := new(RmFileHandle)
-	fmFileHandler := filem.GetFile(filem.FileTypeData, schemaName, talbeName)
+	fileP := filepath.Join(global.DataDir, schemaName, tableName+"."+filem.DataFileSuf)
+	fmFileHandler := filem.GetFile(fileP)
 	fileHandle.fmFileHandler = fmFileHandler
 	return fileHandle
 }

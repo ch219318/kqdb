@@ -6,13 +6,12 @@ import (
 )
 
 type Page struct {
-	PageNum    int    //从0开始
-	SchemaName string //schema名
-	TableName  string //表名
-	Lower      int
-	Upper      int
-	Items      []*Item
-	Content    []byte //page内容,从upper位置到文件尾
+	PageNum  int //从0开始
+	FilePath string
+	Lower    int
+	Upper    int
+	Items    []*Item
+	Content  []byte //page内容,从upper位置到文件尾
 }
 
 type Item struct {
@@ -54,14 +53,13 @@ func (page *Page) Marshal() []byte {
 }
 
 //page反序列化
-func (page *Page) UnMarshal(bytes []byte, pageNum int, schemaName string, tableName string) {
+func (page *Page) UnMarshal(bytes []byte, pageNum int, fileP string) {
 	if len(bytes) != PageSize {
 		log.Panic("page size大小出错：" + string(len(bytes)))
 	}
 
 	page.PageNum = pageNum
-	page.SchemaName = schemaName
-	page.TableName = tableName
+	page.FilePath = fileP
 
 	//page头
 	headerBytes := bytes[0:24]

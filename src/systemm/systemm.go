@@ -119,7 +119,8 @@ func CreateTable(table *Table) {
 	schemaMap[schemaName][tableName] = table
 
 	//初始化表data文件
-	filem.CreateDataFile(schemaName, table.Name)
+	fileP := filepath.Join(global.DataDir, schemaName, tableName+"."+filem.DataFileSuf)
+	filem.CreateDataFile(fileP)
 
 }
 

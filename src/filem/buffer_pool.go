@@ -2,6 +2,7 @@ package filem
 
 import (
 	"container/list"
+	"strings"
 )
 
 type bufferTable struct {
@@ -9,36 +10,40 @@ type bufferTable struct {
 	DirtyPageList *list.List
 }
 
-//创建buffer pool数据结构
-type tName string
-
+//创建buffer pool数据结构,key为filePath
 var bufferPool = initBufferPool()
 
-func initBufferPool() map[string]map[tName]*bufferTable {
-	schemaPool := make(map[string]map[tName]*bufferTable)
+func initBufferPool() map[string]*bufferTable {
+	pool := make(map[string]*bufferTable)
 
-	for schemaName := range filesMap {
-		tablePool := make(map[tName]*bufferTable)
-		tableMap := filesMap[schemaName]
-		for tableName := range tableMap {
-			t := tName(tableName)
-
+	for fileP := range filesMap {
+		if strings.HasSuffix(fileP, "."+DataFileSuf) {
 			pageList := list.New()
 			//加入一定数量page
-			fileHandler := filesMap[schemaName][tableName][1]
+			fileHandler := filesMap[fileP]
 			for i := 1; i < 10; i++ {
 				page := fileHandler.getPageFromDisk(i)
 				pageList.PushBack(page)
 			}
 
 			bufferTable := bufferTable{pageList, list.New()}
-
-			tablePool[t] = &bufferTable
+			pool[fileP] = &bufferTable
 		}
-		schemaPool[schemaName] = tablePool
 	}
 
-	return schemaPool
+	return pool
+}
+
+func addFileToPool(fileP string) {
+	pageList := list.New()
+	//加入一定数量page
+	fileHandler := filesMap[fileP]
+	for i := 1; i < 10; i++ {
+		page := fileHandler.getPageFromDisk(i)
+		pageList.PushBack(page)
+	}
+	bufferTable := bufferTable{pageList, list.New()}
+	bufferPool[fileP] = &bufferTable
 }
 
 //插入databuffer
