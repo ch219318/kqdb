@@ -1,8 +1,9 @@
-package sqlm
+package querym
 
 import (
 	"kqdb/src/filem"
 	"kqdb/src/recordm"
+	"kqdb/src/systemm"
 )
 
 type relationAlgebraOp interface {
@@ -20,30 +21,26 @@ type tableScan struct {
 }
 
 func (ts *tableScan) getNextTuple() *recordm.Tuple {
-	table := recordm.SchemaMap[ts.schemaName][ts.tableName]
-
 	//从cursor处遍历page
-	for ts.pageCursor < table.PageTotal {
-		page := ts.getPage(ts.pageCursor)
-		tupleList := page.TupleList
-		totalTuple := tupleList.Len()
+	fileHandler := filem.GetFile(filem.FileTypeData, ts.schemaName, ts.tableName)
+	for ts.pageCursor < fileHandler.TotalPage {
+		page := fileHandler.GetPage(ts.pageCursor)
+		items := page.Items
+		totalTuple := len(items)
 
 		//从cursor处遍历tuple
 		for ts.pageTupleCursor < totalTuple {
 			//从page中获取tuple
-			var result *recordm.Tuple
-			for e := tupleList.Front(); e != nil; e = e.Next() {
-				tuple := e.Value.(recordm.Tuple)
-				if ts.pageTupleCursor == tuple.TupleNum {
-					result = &tuple
-				}
-			}
-			if result != nil {
-				ts.pageTupleCursor++
+			tupleBytes := page.GetTupleBytes(ts.pageTupleCursor)
+			if tupleBytes != nil {
+				result := new(recordm.Tuple)
+				result.UnMarshal(tupleBytes, ts.pageTupleCursor, ts.schemaName, ts.tableName)
 				return result
 			} else {
-				break
+				continue
 			}
+
+			ts.pageTupleCursor++
 		}
 
 		ts.pageCursor++
@@ -53,50 +50,9 @@ func (ts *tableScan) getNextTuple() *recordm.Tuple {
 	return nil
 }
 
-func (ts *tableScan) getPage(pageNum int) recordm.Page {
-	//从buffer_pool中获取page
-	tName := recordm.TableName(ts.tableName)
-	var page *recordm.Page
-	pageList := recordm.BufferPool[ts.schemaName][tName].PageList
-	for e := pageList.Front(); e != nil; e = e.Next() {
-		p := e.Value.(recordm.Page)
-		if p.PageNum == ts.pageCursor {
-			page = &p
-			break
-		}
-	}
-
-	//如果page链上没有，从脏链上获取
-	if page == nil {
-		dirtyPageList := recordm.BufferPool[ts.schemaName][tName].DirtyPageList
-		for e := dirtyPageList.Front(); e != nil; e = e.Next() {
-			p := e.Value.(recordm.Page)
-			if p.PageNum == ts.pageCursor {
-				page = &p
-				break
-			}
-		}
-	}
-
-	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
-	if page == nil {
-		//从文件中获取page
-		fileHandler := filem.FilesMap[ts.schemaName][ts.tableName][1]
-		bytes := fileHandler.GetPageData(pageNum)
-		page = new(recordm.Page)
-		page.UnMarshal(bytes, pageNum, ts.schemaName, ts.tableName)
-
-		//放入buffer_pool
-		pageList.PushBack(*page)
-
-	}
-
-	return *page
-}
-
 type project struct {
 	child        relationAlgebraOp
-	selectedCols []recordm.Column
+	selectedCols []systemm.Column
 }
 
 func (p project) getNextTuple() *recordm.Tuple {
@@ -147,8 +103,8 @@ func (j *join) getNextTuple() *recordm.Tuple {
 	rightTuple := j.allRightTupleS[j.cursor]
 
 	//构建临时表
-	//leftColumns := recordm.SchemaMap[j.leftTuple.SchemaName][j.leftTuple.TableName].Columns
-	//rightColumns := recordm.SchemaMap[rightTuple.SchemaName][rightTuple.TableName].Columns
+	//leftColumns := systemm.recordm.schemaMap[j.leftTuple.SchemaName][j.leftTuple.TableName].Columns
+	//rightColumns := systemm.recordm.schemaMap[rightTuple.SchemaName][rightTuple.TableName].Columns
 	//tempTableCols := append(leftColumns, rightColumns...)
 	tempTableName := j.leftTuple.TableName + rightTuple.TableName
 	//tempTable := recordm.Table{tempTableName, tempTableCols}

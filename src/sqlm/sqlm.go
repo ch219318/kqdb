@@ -1,24 +1,17 @@
 package sqlm
 
 import (
-	"encoding/json"
 	"github.com/xwb1989/sqlparser"
+	"github.com/xwb1989/sqlparser/dependency/sqltypes"
 	"kqdb/src/global"
-	"kqdb/src/recordm"
+	"kqdb/src/querym"
+	"kqdb/src/systemm"
 	"log"
 	"runtime/debug"
 )
 
 func init() {
 	global.InitLog()
-}
-
-type logicalPlan struct {
-	root relationAlgebraOp
-}
-
-type physicalPlan struct {
-	root relationAlgebraOp
 }
 
 //执行sql
@@ -66,8 +59,8 @@ func HandSql(sql string) (result string) {
 func handDdl(ddlStmt *sqlparser.DDL) string {
 	switch ddlStmt.Action {
 	case sqlparser.CreateStr:
-		table := recordm.GenTableByDdl(ddlStmt)
-		recordm.GenFileForTable(table)
+		table := genTableByDdl(ddlStmt)
+		systemm.CreateTable(table)
 	case sqlparser.AlterStr:
 	case sqlparser.DropStr:
 	default:
@@ -77,117 +70,67 @@ func handDdl(ddlStmt *sqlparser.DDL) string {
 	return "ok"
 }
 
+//根据ddl语句生成表结构体
+func genTableByDdl(stmt *sqlparser.DDL) *systemm.Table {
+	tableName := stmt.NewName.Name.String()
+
+	genTable := new(systemm.Table)
+	genTable.SchemaName = global.DefaultSchemaName
+	genTable.Name = tableName
+
+	astCols := stmt.TableSpec.Columns
+	colNumber := len(astCols) //列数量
+	columns := make([]systemm.Column, colNumber)
+	for i := 0; i < colNumber; i++ {
+		astCol := astCols[i]
+		col := genColumn(astCol)
+		columns[i] = col
+	}
+	//log.Println(columns)
+	genTable.Columns = columns
+
+	return genTable
+}
+
+//根据ddl生成column
+func genColumn(astColDef *sqlparser.ColumnDefinition) systemm.Column {
+	col := new(systemm.Column)
+	astColName := astColDef.Name
+	astColType := astColDef.Type
+
+	col.Name = astColName.String()
+
+	switch astColType.SQLType() {
+	case sqltypes.Int32:
+		col.DataType = systemm.TypeInt
+	case sqltypes.VarChar:
+		col.DataType = systemm.TypeString
+	default:
+		panic(global.NewSqlError("不支持字段:" + col.Name + "的字段类型:" + astColType.SQLType().String()))
+	}
+
+	switch astColType.NotNull {
+	case sqlparser.BoolVal(true):
+		col.IsNull = false
+	case sqlparser.BoolVal(false):
+		col.IsNull = true
+	default:
+		panic(global.NewSqlError("字段" + col.Name + "格式有误"))
+	}
+
+	//todo
+	col.DataWidth = 20
+	col.IsUnique = false
+	col.DefaultVal = "de"
+	col.Comment = "co"
+
+	return *col
+}
+
 func handSelect(selectStmt *sqlparser.Select) string {
-	//var tuples []recordm.Tuple
-
-	//语义检查
-	check(selectStmt)
-
-	//生成逻辑计划
-	logicalPlan := transToLocalPlan(selectStmt)
-
-	//生成物理计划
-	physicalPlan := physicalPlan{logicalPlan.root}
-
-	//执行
-	rootOp := physicalPlan.root
-	var tuples []recordm.Tuple
-	for e := rootOp.getNextTuple(); e != nil; e = rootOp.getNextTuple() {
-		tuples = append(tuples, *e)
-	}
-
-	bytes, err := json.Marshal(tuples)
-	if err != nil {
-		return err.Error()
-	}
-	return string(bytes)
-}
-
-func check(statement sqlparser.Statement) {
-
-}
-
-func transToLocalPlan(selectStmt *sqlparser.Select) logicalPlan {
-	tableName := ([]sqlparser.TableExpr)(selectStmt.From)[0].(*sqlparser.AliasedTableExpr).
-		Expr.(sqlparser.TableName).Name.String()
-
-	//判断表是否存在
-	isExist := recordm.TableIsExist(tableName)
-	if !isExist {
-		panic(global.NewSqlError(global.DefaultSchemaName + "." + tableName + "表不存在"))
-	}
-
-	//构建select op
-	columns := make([]recordm.Column, 0)
-	for _, v := range selectStmt.SelectExprs {
-		switch i := v.(type) {
-		case *sqlparser.StarExpr:
-			columns = recordm.SchemaMap[global.DefaultSchemaName][tableName].Columns
-		case *sqlparser.AliasedExpr:
-			log.Println(i)
-		case sqlparser.Nextval:
-		}
-
-	}
-	root := new(project)
-	root.selectedCols = columns
-
-	//构建tableScan op
-	op1 := tableScan{global.DefaultSchemaName, tableName, 1, 0}
-
-	//组装op链
-	root.child = &op1
-
-	plan := logicalPlan{root}
-	return plan
+	return querym.Select(selectStmt)
 }
 
 func handInsert(insertStmt *sqlparser.Insert) string {
-	tableName := insertStmt.Table.Name.String()
-	log.Println(tableName)
-
-	//判断表是否存在
-	isExist := recordm.TableIsExist(tableName)
-	if !isExist {
-		return global.DefaultSchemaName + "." + tableName + "表不存在"
-	}
-
-	//获取表
-	table := recordm.GetTable(tableName)
-	columns := table.Columns
-
-	switch node := insertStmt.Rows.(type) {
-	case sqlparser.Values:
-		for _, valTuple := range node {
-
-			//构造tuple
-			content := make(map[string]string)
-			for i, expr := range valTuple {
-				switch expr := expr.(type) {
-				case *sqlparser.SQLVal:
-
-					//sqlVal转string
-					var colVal string
-					switch expr.Type {
-					case sqlparser.StrVal:
-						colVal = string(expr.Val)
-					case sqlparser.IntVal:
-						colVal = string(expr.Val)
-					default:
-						return "不支持的类型"
-					}
-					//log.Println("colVal:" + colVal)
-
-					column := columns[i]
-					content[column.Name] = colVal
-				}
-			}
-			tuple := recordm.Tuple{-1, global.DefaultSchemaName, tableName, content}
-			log.Println(tuple)
-			recordm.InsertRecord(tuple)
-
-		}
-	}
-
-	return "ok"
+	return querym.Insert(insertStmt)
 }

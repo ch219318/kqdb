@@ -1,8 +1,7 @@
-package recordm
+package filem
 
 import (
 	"container/list"
-	"kqdb/src/filem"
 	"log"
 	"time"
 )
@@ -23,8 +22,8 @@ func initTicker() *time.Ticker {
 
 //处理dirty链
 func flushDirtyList() {
-	for schemaName := range BufferPool {
-		tablePool := BufferPool[schemaName]
+	for schemaName := range bufferPool {
+		tablePool := bufferPool[schemaName]
 		for tableName := range tablePool {
 			bufferTable := tablePool[tableName]
 			dirtyPageList := bufferTable.DirtyPageList
@@ -32,14 +31,14 @@ func flushDirtyList() {
 
 				log.Println("flushDirtyList:" + schemaName + "." + string(tableName))
 
-				file := filem.FilesMap[schemaName][string(tableName)][1].File
+				file := GetFile(FileTypeData, schemaName, string(tableName)).File
 				for e := dirtyPageList.Front(); e != nil; e = e.Next() {
-					dirtyPage := e.Value.(Page)
-					log.Print(dirtyPage)
+					dirtyPage := e.Value.(*Page)
+					log.Print(*dirtyPage)
 
 					//dirtyPage转bytes
 					bytes := dirtyPage.Marshal()
-					offset := dirtyPage.PageNum * filem.PageSize
+					offset := dirtyPage.PageNum * PageSize
 					n, err := file.WriteAt(bytes, int64(offset))
 					if err != nil {
 						log.Println(n)

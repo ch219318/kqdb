@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"runtime/debug"
-	"strings"
 )
 
 func main() {
@@ -17,9 +15,9 @@ func main() {
 
 	printSlice(numbers1)
 
-	log.Println("====" + strings.TrimSuffix("aa.frm", ".frm"))
+	log.Println("====")
 
-	debug.PrintStack()
+	log.Println(5 % 3)
 
 }
 
