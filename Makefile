@@ -1,6 +1,6 @@
 BINARY_NAME=hello
 
-build: clean
+build:
 	mkdir -p target/data/example target/data/meta
 	go build -o target/bin/test -v src/test.go
 	go build -o target/bin/server -v src/server.go

@@ -42,11 +42,10 @@ func main() {
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGUSR1, syscall.SIGUSR2)
 	go func() {
 		<-ch
-		log.Println("Get Stop Command. Now Stoping...")
+		log.Println("获取到关闭命令。现在关闭中...")
 		if err = ln.Close(); err != nil {
 			log.Println(err)
 		}
-		filem.CloseFilesMap()
 	}()
 
 	for {
@@ -59,6 +58,13 @@ func main() {
 			go handleConn(conn)
 		}
 	}
+
+	//执行清理程序
+	log.Println("退出前清理开始...")
+	filem.CloseFilesMap()
+	log.Println("退出前清理完成")
+
+	log.Println("服务端成功退出")
 }
 
 func initCfg() {
