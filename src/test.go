@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"kqdb/src/filem"
 	"log"
+	"reflect"
 )
 
 func main() {
@@ -17,7 +19,11 @@ func main() {
 
 	log.Println("====")
 
-	log.Println(5 % 3)
+	map1 := make(map[string]filem.Page)
+	map1["aa"] = *new(filem.Page)
+	b := map1["bb"]
+	log.Println(b)
+	log.Println(reflect.TypeOf(b))
 
 }
 

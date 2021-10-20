@@ -243,7 +243,7 @@ func (fh *FileHandler) GetPage(pageNum int) *Page {
 
 	//如果buffer_pool中page不存在，从文件中获取page，并放入buffer_pool
 	if page == nil {
-		page = fh.getPageFromDisk(pageNum)
+		page = fh.readPageFromDisk(pageNum)
 		//放入buffer_pool
 		pageList.PushBack(page)
 	}
@@ -252,7 +252,7 @@ func (fh *FileHandler) GetPage(pageNum int) *Page {
 }
 
 //从硬盘获取page
-func (fh *FileHandler) getPageFromDisk(pageNum int) *Page {
+func (fh *FileHandler) readPageFromDisk(pageNum int) *Page {
 	if fh.fileType != FileTypeData {
 		log.Panic("不是数据文件")
 	}

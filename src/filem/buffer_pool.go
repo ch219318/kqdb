@@ -22,7 +22,7 @@ func initBufferPool() map[string]*bufferTable {
 			//加入一定数量page
 			fileHandler := filesMap[fileP]
 			for i := 1; i < 10; i++ {
-				page := fileHandler.getPageFromDisk(i)
+				page := fileHandler.readPageFromDisk(i)
 				pageList.PushBack(page)
 			}
 
@@ -39,7 +39,7 @@ func addFileToPool(fileP string) {
 	//加入一定数量page
 	fileHandler := filesMap[fileP]
 	for i := 1; i < 10; i++ {
-		page := fileHandler.getPageFromDisk(i)
+		page := fileHandler.readPageFromDisk(i)
 		pageList.PushBack(page)
 	}
 	bufferTable := bufferTable{pageList, list.New()}
