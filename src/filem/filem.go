@@ -251,6 +251,25 @@ func (fh *FileHandler) GetPage(pageNum int) *Page {
 	return page
 }
 
+//分配新page
+func (fh *FileHandler) AllocatePage() *Page {
+	//生成page
+	page := new(Page)
+	page.PageNum = fh.TotalPage
+	page.FilePath = fh.filePath
+	page.Lower = 24
+	page.Upper = PageSize - 1
+	page.Items = make([]*Item, 0)
+	page.Content = make([]byte, 0)
+
+	//放入bufferPool的dirty链
+	bufferPool[fh.filePath].DirtyPageList.PushBack(page)
+
+	//FileHandler属性修改
+	fh.TotalPage++
+	return page
+}
+
 //从硬盘获取page
 func (fh *FileHandler) readPageFromDisk(pageNum int) *Page {
 	if fh.fileType != FileTypeData {

@@ -3,6 +3,7 @@ package recordm
 import (
 	"kqdb/src/filem"
 	"kqdb/src/global"
+	"log"
 	"path/filepath"
 )
 
@@ -29,22 +30,38 @@ type RmFileHandle struct {
 }
 
 func (rfh *RmFileHandle) InsertRecord(tuple Tuple) {
-	page := rfh.fmFileHandler.GetPage(1)
-
+	var resultPage *filem.Page
 	tupleBytes := tuple.Marshal()
-	page.AddTupleBytes(tupleBytes)
 
-	rfh.fmFileHandler.MarkDirty(1)
+	//获取一个可用的page
+	totalPage := rfh.fmFileHandler.TotalPage
+	for i := 1; i < totalPage; i++ {
+		page := rfh.fmFileHandler.GetPage(i)
+		if (page.Upper - page.Lower - 1) > (4 + len(tupleBytes)) {
+			resultPage = page
+			break
+		}
+	}
 
-	return
+	//分配新page
+	if resultPage == nil {
+		resultPage = rfh.fmFileHandler.AllocatePage()
+
+	}
+
+	if resultPage != nil {
+		resultPage.AddTupleBytes(tupleBytes)
+		rfh.fmFileHandler.MarkDirty(resultPage.PageNum)
+	} else {
+		log.Panic("获取page出错")
+	}
+
 }
 
 func (rfh *RmFileHandle) DelRecord(tupleNum int) {
-	return
 }
 
 func (rfh *RmFileHandle) UpdateRecord(bytes []byte, tupleNum int) {
-	return
 
 }
 
