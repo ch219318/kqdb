@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"kqdb/src/filem"
+	"github.com/xwb1989/sqlparser"
 	"log"
-	"reflect"
+	"strconv"
 )
 
 func main() {
@@ -19,12 +19,57 @@ func main() {
 
 	log.Println("====")
 
-	map1 := make(map[string]filem.Page)
-	map1["aa"] = *new(filem.Page)
-	b := map1["bb"]
-	log.Println(b)
-	log.Println(reflect.TypeOf(b))
+	sql := "select * from Persons2 where  LastName = 'Bill1' and  ID_P1 >2-3*4+1 or (cc <0 and bb>0+2-1)"
+	stmt, _ := sqlparser.ParseStrictDDL(sql)
+	var where sqlparser.Expr
+	var select1 *sqlparser.Select
+	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
+		switch node := node.(type) {
+		case *sqlparser.Select:
+			log.Println("select")
+			where = node.Where.Expr
+			select1 = node
 
+		}
+		return true, nil
+	}, stmt)
+
+	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
+		switch node := node.(type) {
+		case sqlparser.SelectExprs:
+			log.Println("SelectExprs", node)
+		case sqlparser.TableExprs:
+			log.Println("TableExprs", node)
+		case *sqlparser.Where:
+			log.Println("where", node)
+
+		}
+		return true, nil
+	}, select1)
+
+	sqlparser.Walk(visit1, where)
+
+	leftInt, err := strconv.ParseInt("12", 10, 32)
+	fmt.Println(err)
+	fmt.Println(leftInt)
+
+}
+
+func visit1(node sqlparser.SQLNode) (kontinue bool, err error) {
+	switch node := node.(type) {
+	case *sqlparser.AndExpr:
+		log.Println("AndExpr", node)
+		_ = node
+	case *sqlparser.OrExpr:
+		log.Println("OrExpr", node)
+	case *sqlparser.ComparisonExpr:
+		log.Println("ComparisonExpr", node)
+	case *sqlparser.BinaryExpr:
+		log.Println("BinaryExpr", node)
+	case *sqlparser.UnaryExpr:
+		log.Println("UnaryExpr", node)
+	}
+	return true, nil
 }
 
 func printSlice(x []int) {

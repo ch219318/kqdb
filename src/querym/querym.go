@@ -48,39 +48,71 @@ func check(statement sqlparser.Statement) {
 }
 
 func transToLocalPlan(selectStmt *sqlparser.Select) logicalPlan {
-	tableName := ([]sqlparser.TableExpr)(selectStmt.From)[0].(*sqlparser.AliasedTableExpr).
-		Expr.(sqlparser.TableName).Name.String()
-	schemaName := global.DefaultSchemaName
+	var projectOp *project
+	var scanOp *tableScan
+	var filterOp *filter
 
-	//判断表是否存在
-	isExist := systemm.TableIsExist(schemaName, tableName)
-	if !isExist {
-		panic(global.NewSqlError(schemaName + "." + tableName + "表不存在"))
-	}
-
-	//构建select op
-	columns := make([]systemm.Column, 0)
-	for _, v := range selectStmt.SelectExprs {
-		switch i := v.(type) {
-		case *sqlparser.StarExpr:
-			columns = systemm.GetTable(schemaName, tableName).Columns
-		case *sqlparser.AliasedExpr:
-			log.Println(i)
-		case sqlparser.Nextval:
+	sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
+		switch node := node.(type) {
+		case sqlparser.SelectExprs:
+			//构建select op
+			projectOp = new(project)
+			//columns := make([]systemm.Column, 0)
+			for _, v := range node {
+				switch i := v.(type) {
+				case *sqlparser.StarExpr:
+					projectOp.colNames = nil
+				case *sqlparser.AliasedExpr:
+					log.Println(i)
+				case sqlparser.Nextval:
+				}
+			}
+		case sqlparser.TableExprs:
+			tableName := node[0].(*sqlparser.AliasedTableExpr).
+				Expr.(sqlparser.TableName).Name.String()
+			schemaName := global.DefaultSchemaName
+			//判断表是否存在
+			isExist := systemm.TableIsExist(schemaName, tableName)
+			if !isExist {
+				panic(global.NewSqlError(schemaName + "." + tableName + "表不存在"))
+			}
+			//构建tableScan op
+			scanOp = &tableScan{schemaName, tableName, 1, 0}
+		case *sqlparser.Where:
+			if node != nil {
+				//构建filter op
+				filterOp = new(filter)
+				exprs := make([]sqlparser.Expr, 0)
+				sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
+					switch node := node.(type) {
+					case sqlparser.Expr:
+						exprs = append(exprs, node)
+					}
+					return true, nil
+				}, node)
+				reverse(exprs)
+				filterOp.exprs = exprs
+			}
 		}
-
-	}
-	root := new(project)
-	root.selectedCols = columns
-
-	//构建tableScan op
-	op1 := tableScan{schemaName, tableName, 1, 0}
+		return true, nil
+	}, selectStmt)
 
 	//组装op链
-	root.child = &op1
+	if filterOp == nil {
+		projectOp.child = scanOp
+	} else {
+		projectOp.child = filterOp
+		filterOp.child = scanOp
+	}
 
-	plan := logicalPlan{root}
+	plan := logicalPlan{projectOp}
 	return plan
+}
+
+func reverse(s []sqlparser.Expr) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
 
 func Insert(insertStmt *sqlparser.Insert) string {

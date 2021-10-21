@@ -1,11 +1,13 @@
 package querym
 
 import (
+	"github.com/xwb1989/sqlparser"
 	"kqdb/src/filem"
 	"kqdb/src/global"
 	"kqdb/src/recordm"
-	"kqdb/src/systemm"
+	"log"
 	"path/filepath"
+	"strconv"
 )
 
 type relationAlgebraOp interface {
@@ -52,25 +54,178 @@ func (ts *tableScan) getNextTuple() *recordm.Tuple {
 }
 
 type project struct {
-	child        relationAlgebraOp
-	selectedCols []systemm.Column
+	child    relationAlgebraOp
+	colNames []string
 }
 
-func (p project) getNextTuple() *recordm.Tuple {
+func (p *project) getNextTuple() *recordm.Tuple {
 	tuple := p.child.getNextTuple()
 	if tuple == nil {
 		return nil
 	} else {
-		m := make(map[string]string)
-		for _, col := range p.selectedCols {
-			m[col.Name] = tuple.Content[col.Name]
+		//星号列
+		if p.colNames == nil {
+			return tuple
+		} else {
+			m := make(map[string]string)
+			for _, colName := range p.colNames {
+				if colVal, ok := tuple.Content[colName]; ok {
+					m[colName] = colVal
+				} else {
+					panic(global.NewSqlError("不存在列：" + colName))
+				}
+			}
+			tuple.Content = m
+			return tuple
 		}
-		tuple.Content = m
-		return tuple
+
 	}
 }
 
 type filter struct {
+	child relationAlgebraOp
+	exprs []sqlparser.Expr
+}
+
+func (f *filter) getNextTuple() *recordm.Tuple {
+	for tuple := f.child.getNextTuple(); tuple != nil; tuple = f.child.getNextTuple() {
+		//判断tuple是否符合
+		calcResultMap := make(map[sqlparser.Expr]string)
+		for _, e := range f.exprs {
+			switch expr := e.(type) {
+			case *sqlparser.SQLVal:
+				calcResultMap[expr] = string(expr.Val)
+			case *sqlparser.ColName:
+				name := expr.Name.String()
+				if colVal, ok := tuple.Content[name]; ok {
+					calcResultMap[expr] = colVal
+				} else {
+					panic(global.NewSqlError("where中列不存在：" + name))
+				}
+			case *sqlparser.AndExpr:
+				calcAnd(expr, calcResultMap)
+			case *sqlparser.OrExpr:
+				calcOr(expr, calcResultMap)
+			case *sqlparser.BinaryExpr:
+				calcBin(expr, calcResultMap)
+			case *sqlparser.ComparisonExpr:
+				calcCom(expr, calcResultMap)
+			default:
+				panic(global.NewSqlError("不支持的表达式"))
+			}
+		}
+		result := calcResultMap[f.exprs[len(f.exprs)-1]]
+		resultBool, err := strconv.ParseBool(result)
+		if err != nil {
+			log.Panicln("解析result字符串出错")
+		}
+		if resultBool {
+			return tuple
+		}
+	}
+
+	return nil
+}
+
+func calcAnd(expr *sqlparser.AndExpr, calcResultMap map[sqlparser.Expr]string) {
+	leftStr, ok := calcResultMap[expr.Left]
+	if !ok {
+		log.Panicln("leftStr", "不存在")
+	}
+	rightStr, ok := calcResultMap[expr.Right]
+	if !ok {
+		log.Panicln("rightStr", "不存在")
+	}
+	leftBool, err := strconv.ParseBool(leftStr)
+	if err != nil {
+		log.Panicln("转化leftBool出错")
+	}
+	rightBool, err := strconv.ParseBool(rightStr)
+	if err != nil {
+		log.Panicln("转化rightBool出错")
+	}
+	andResult := strconv.FormatBool(leftBool && rightBool)
+	calcResultMap[expr] = andResult
+}
+
+func calcOr(expr *sqlparser.OrExpr, calcResultMap map[sqlparser.Expr]string) {
+	leftStr, ok := calcResultMap[expr.Left]
+	if !ok {
+		log.Panicln("leftStr", "不存在")
+	}
+	rightStr, ok := calcResultMap[expr.Right]
+	if !ok {
+		log.Panicln("rightStr", "不存在")
+	}
+	leftBool, err := strconv.ParseBool(leftStr)
+	if err != nil {
+		log.Panicln("转化leftBool出错")
+	}
+	rightBool, err := strconv.ParseBool(rightStr)
+	if err != nil {
+		log.Panicln("转化rightBool出错")
+	}
+	orResult := strconv.FormatBool(leftBool || rightBool)
+	calcResultMap[expr] = orResult
+}
+
+func calcCom(expr *sqlparser.ComparisonExpr, calcResultMap map[sqlparser.Expr]string) {
+	leftStr, ok := calcResultMap[expr.Left]
+	if !ok {
+		log.Panicln("leftStr", "不存在")
+	}
+	rightStr, ok := calcResultMap[expr.Right]
+	if !ok {
+		log.Panicln("rightStr", "不存在")
+	}
+	leftInt, _ := strconv.ParseInt(leftStr, 10, 32)
+	rightInt, _ := strconv.ParseInt(rightStr, 10, 32)
+
+	switch expr.Operator {
+	case sqlparser.EqualStr:
+		comResult := strconv.FormatBool(leftStr == rightStr)
+		calcResultMap[expr] = comResult
+	case sqlparser.LessThanStr:
+		comResult := strconv.FormatBool(leftInt < rightInt)
+		calcResultMap[expr] = comResult
+	case sqlparser.GreaterThanStr:
+		comResult := strconv.FormatBool(leftInt > rightInt)
+		calcResultMap[expr] = comResult
+	}
+}
+
+func calcBin(expr *sqlparser.BinaryExpr, calcResultMap map[sqlparser.Expr]string) {
+	leftStr, ok := calcResultMap[expr.Left]
+	if !ok {
+		log.Panicln("leftStr", "不存在")
+	}
+	rightStr, ok := calcResultMap[expr.Right]
+	if !ok {
+		log.Panicln("rightStr", "不存在")
+	}
+	leftInt, err := strconv.ParseInt(leftStr, 10, 32)
+	if err != nil {
+		log.Panicln("转化leftInt出错")
+	}
+	rightInt, err := strconv.ParseInt(rightStr, 10, 32)
+	if err != nil {
+		log.Panicln("转化rightInt出错")
+	}
+
+	switch expr.Operator {
+	case sqlparser.PlusStr:
+		binResult := strconv.FormatInt(leftInt+rightInt, 10)
+		calcResultMap[expr] = binResult
+	case sqlparser.MinusStr:
+		binResult := strconv.FormatInt(leftInt-rightInt, 10)
+		calcResultMap[expr] = binResult
+	case sqlparser.MultStr:
+		binResult := strconv.FormatInt(leftInt*rightInt, 10)
+		calcResultMap[expr] = binResult
+	case sqlparser.DivStr:
+		binResult := strconv.FormatInt(leftInt/rightInt, 10)
+		calcResultMap[expr] = binResult
+	}
 }
 
 type join struct {
