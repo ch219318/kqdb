@@ -20,7 +20,7 @@ func init() {
 	global.InitLog()
 }
 
-var port = flag.String("p", "33455", "help message for flagname")
+var port = flag.String("p", "33455", "监听端口")
 
 type Config struct {
 	Port     string
@@ -81,8 +81,8 @@ func handleConn(conn net.Conn) {
 
 	defer conn.Close()
 	defer func() {
-		if panic := recover(); panic != nil {
-			log.Println("程序发生严重错误:" + fmt.Sprintf("%v", panic))
+		if pnc := recover(); pnc != nil {
+			log.Println("程序发生严重错误:" + fmt.Sprintf("%v", pnc))
 			debug.PrintStack()
 		}
 	}()
